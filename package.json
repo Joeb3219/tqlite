@@ -1,25 +1,25 @@
 {
-    "name": "squeel",
-    "version": "1.0.0",
-    "main": "index.js",
-    "license": "MIT",
-    "scripts": {
-        "watch": "nodemon ./src/index.ts",
-        "lint": "prettier --write ."
-    },
-    "dependencies": {
-        "lodash": "^4.17.21",
-        "ts-jest": "^29.0.5",
-        "typescript": "^4.9.4"
-    },
-    "devDependencies": {
-        "@types/jest": "^29.2.5",
-        "@types/lodash": "^4.14.191",
-        "@types/node": "^18.11.3",
-        "jest": "^29.3.1",
-        "nodemon": "^2.0.20",
-        "prettier": "^2.8.1",
-        "prettier-plugin-organize-imports": "^3.2.1",
-        "ts-node": "^10.9.1"
-    }
+  "name": "squeel",
+  "version": "1.0.0",
+  "main": "index.js",
+  "license": "MIT",
+  "scripts": {
+    "watch": "nodemon ./src/index.ts",
+    "lint": "prettier --write ."
+  },
+  "dependencies": {
+    "lodash": "^4.17.21",
+    "ts-jest": "^29.0.5",
+    "typescript": "^4.9.4"
+  },
+  "devDependencies": {
+    "@types/jest": "^29.2.5",
+    "@types/lodash": "^4.14.191",
+    "@types/node": "^18.11.3",
+    "jest": "^29.3.1",
+    "nodemon": "^2.0.20",
+    "prettier": "^2.8.1",
+    "prettier-plugin-organize-imports": "^3.2.1",
+    "ts-node": "^10.9.1"
+  }
 }
