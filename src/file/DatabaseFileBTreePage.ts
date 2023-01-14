@@ -124,8 +124,8 @@ export class DatabaseFileBTreePageUtil {
     }
 
     const cellPointerBytes = bytes.subarray(
-      12,
-      12 + pageHeader.numberCells * 2
+      8,
+      8 + pageHeader.numberCells * 2
     );
     const offsets = _.range(0, pageHeader.numberCells).map((idx) =>
       cellPointerBytes.readUint16BE(idx * 2)
@@ -158,8 +158,6 @@ export class DatabaseFileBTreePageUtil {
           : minPayload
       );
 
-      // console.log({ usableSize, maxPayload, minPayload, K, payloadSize, storedSize });
-
       const data = bytes.subarray(currentIndex, currentIndex + storedSize);
       currentIndex += storedSize; // - payloadSizeLength - rowIdLength;
 
@@ -171,18 +169,14 @@ export class DatabaseFileBTreePageUtil {
         currentIndex += 4;
       }
 
-      const dataStr = _.map(data, (d) => String.fromCharCode(d)).join("");
       const cell = {
         payloadSize,
         rowId,
         data: data.toString("utf8"),
         overflowPage,
       };
-      console.log(cell);
       return cell;
     });
-    console.log(pageHeader);
-    console.log(parsedCells);
 
     return parsedCells;
   }
