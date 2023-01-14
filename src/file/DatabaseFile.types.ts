@@ -1,6 +1,6 @@
 
 export type FileFormatVersion = 'legacy' | 'WAL';
-export type TextEncoding = 'utf-8' | 'utf-16le' | 'utf-16be';
+export type TextEncoding = 'utf8' | 'utf16le' | 'utf16be';
 
 export type DatabaseHeader = {
     headerString: string;
@@ -25,4 +25,11 @@ export type DatabaseHeader = {
     applicationId: number;
     versionValidForNumber: number;
     sqliteVersionNumber: number;
+}
+
+export type BTree = {
+    type: 'table';
+
+} | {
+    type: 'index';
 }

@@ -82,15 +82,15 @@ export class DatabaseFileHeaderUtil {
         const value = file.readInt32(56);
 
         if (value === 1) {
-            return 'utf-8';
+            return 'utf8';
         }
 
         if (value === 2) {
-            return 'utf-16le';
+            return 'utf16le';
         }
 
         if (value === 3) {
-            return 'utf-16be';
+            return 'utf16be';
         }
 
         throw new Error(`Text encoding must be a value between 1 and 3, but received ${value}`);
