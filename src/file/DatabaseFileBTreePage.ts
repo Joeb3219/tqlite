@@ -12,6 +12,7 @@ type BTreeHeaderCommon = {
     numberCells: number;
     cellContentStartIndex: number;
     numberFragmentedFreeBytesInCellContent: number;
+    pageNumber: number;
 };
 
 export type BTreeHeader =
@@ -78,6 +79,11 @@ export type BTreeRecord =
           type: "text";
           value: string;
       };
+
+export type BTreeTablePagePointer = {
+    key: number;
+    pageNumber: number;
+};
 
 export class DatabaseFileBTreePageUtil {
     static parseRecord(bytes: Buffer, dbHeader: DatabaseHeader): BTreeRecord[] {
@@ -265,11 +271,12 @@ export class DatabaseFileBTreePageUtil {
         );
     }
 
-    static parseHeader(bytes: Buffer): BTreeHeader {
+    static parseHeader(bytes: Buffer, pageNumber: number): BTreeHeader {
         const pageType = this.parsePageType(bytes);
 
         const startIdx = bytes.readUint16BE(5);
         const commonData: BTreeHeaderCommon = {
+            pageNumber,
             firstFreeblockIndex: bytes.readUint16BE(1),
             numberCells: bytes.readUint16BE(3),
             cellContentStartIndex: startIdx === 0 ? 65536 : startIdx,
@@ -330,23 +337,32 @@ export class DatabaseFileBTreePageUtil {
         };
     }
 
+    static getCellOffsets(bytes: Buffer, pageHeader: BTreeHeader): number[] {
+        const startOffset =
+            (pageHeader.pageNumber === 0 ? 100 : 0) +
+            (pageHeader.type === "table_interior" ? 12 : 8);
+        const cellPointerBytes = bytes.subarray(
+            startOffset,
+            startOffset + pageHeader.numberCells * 2
+        );
+        return _.range(0, pageHeader.numberCells).map((idx) =>
+            cellPointerBytes.readUint16BE(idx * 2)
+        );
+    }
+
     static parseBTreeTableLeaf(
         bytes: Buffer,
         dbHeader: DatabaseHeader,
         pageHeader: BTreeHeader
     ) {
-        if (pageHeader.type !== "table_leaf") {
+        if (
+            pageHeader.type !== "table_leaf" &&
+            pageHeader.type !== "table_interior"
+        ) {
             return undefined;
         }
 
-        const cellPointerBytes = bytes.subarray(
-            8,
-            8 + pageHeader.numberCells * 2
-        );
-        const offsets = _.range(0, pageHeader.numberCells).map((idx) =>
-            cellPointerBytes.readUint16BE(idx * 2)
-        );
-
+        const offsets = this.getCellOffsets(bytes, pageHeader);
         const parsedCells = offsets.map((offset) => {
             let currentIndex = offset;
             const { value: payloadSize, length: payloadSizeLength } =
@@ -400,24 +416,55 @@ export class DatabaseFileBTreePageUtil {
         return parsedCells;
     }
 
+    static parseBTreeTableInterior(
+        bytes: Buffer,
+        dbHeader: DatabaseHeader,
+        pageHeader: BTreeHeader
+    ) {
+        if (pageHeader.type !== "table_interior") {
+            return undefined;
+        }
+
+        const offsets = this.getCellOffsets(bytes, pageHeader);
+        const parsedCells = offsets.map<BTreeTablePagePointer>((offset) => {
+            console.log("parsing at " + offset);
+            let currentIndex = offset;
+            const pageNumber = bytes.readUint32BE(currentIndex);
+            offset += 4;
+            return {
+                pageNumber,
+                key: this.readVarInt(bytes, currentIndex).value,
+            };
+        });
+
+        return parsedCells;
+    }
+
     static parseBTreePage(
         bytes: Buffer,
         pageNumber: number,
         dbHeader: DatabaseHeader
     ) {
         try {
+            const bytesWithoutPageZeroHeader =
+                pageNumber === 0 ? bytes.subarray(100) : bytes;
             const header = this.parseHeader(
-                pageNumber === 0 ? bytes.subarray(100) : bytes
+                bytesWithoutPageZeroHeader,
+                pageNumber
             );
 
             // testing
-            if (header.cellContentStartIndex !== 3418) {
+            if (pageNumber !== 0) {
+                // && header.cellContentStartIndex !== 3418 ) {
                 return undefined;
             }
 
-            const parsed = this.parseBTreeTableLeaf(bytes, dbHeader, header);
+            const parsed =
+                header.type === "table_leaf"
+                    ? this.parseBTreeTableLeaf(bytes, dbHeader, header)
+                    : this.parseBTreeTableInterior(bytes, dbHeader, header);
 
-            return { header, parsed };
+            return { pageNumber, header, parsed };
         } catch (err) {
             console.error(err);
             return undefined;
