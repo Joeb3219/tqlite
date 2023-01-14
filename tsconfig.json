@@ -1,0 +1,10 @@
+{
+    "extends": "@tsconfig/node12/tsconfig.json",
+    "compilerOptions": {
+        "outDir": "dist",
+        "sourceMap": true,
+        "declaration": true,
+        "lib": ["DOM"]
+    },
+    "include": ["src/**/*"]
+}
