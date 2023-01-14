@@ -3,8 +3,9 @@ import { DatabaseFile } from "../DatabaseFile";
 describe("DatabaseFile", () => {
     it("should work", () => {
         const database = new DatabaseFile(
-            "/Users/joeb3219/Downloads/sample.sqlite"
+            "/Users/joeb3219/Desktop/other_sample.sqlite"
         );
-        console.log(JSON.stringify(database.readDatabase(), null, 2));
+        const res = JSON.stringify(database.readDatabase(), null, 2);
+        console.log(res);
     });
 });

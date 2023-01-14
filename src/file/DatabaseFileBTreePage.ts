@@ -28,6 +28,7 @@ export type BTreePageType = BTreeHeader["type"];
 export type BTreeRecord =
     | {
           type: "NULL";
+          value: null;
       }
     | {
           type: "int_8";
@@ -49,10 +50,14 @@ export type BTreeRecord =
           type: "int_48";
           value: number;
       }
-    | {
-          type: "int_64";
-          value: number;
-      }
+      | {
+            type: "int_64";
+            value: number;
+        }
+        | {
+              type: "float_64";
+              value: number;
+          }
     | {
           type: "0";
           value: 0;
@@ -63,7 +68,7 @@ export type BTreeRecord =
       }
     | {
           type: "reserved";
-          value: number[];
+          value: null;
       }
     | {
           type: "blob";
@@ -75,6 +80,149 @@ export type BTreeRecord =
       };
 
 export class DatabaseFileBTreePageUtil {
+    static parseRecord(bytes: Buffer, dbHeader: DatabaseHeader): BTreeRecord[] {
+        if (bytes.length === 0) {
+            return [];
+        }
+        
+        const records: BTreeRecord[] = [];
+
+        let currentIndex = 0;
+        const { value: headerSize, length: headerSizeLength } = this.readVarInt(bytes, currentIndex);
+        const numColumns = headerSize - headerSizeLength;
+        currentIndex += headerSizeLength;
+
+        const columnSerialTypes: number[] = [];
+        while (currentIndex < headerSize) {
+            const { value: serialType, length: serialTypeLength } = this.readVarInt(bytes, currentIndex);
+            currentIndex += serialTypeLength;
+
+            columnSerialTypes.push(serialType);
+        }
+
+        console.log('there are ' + columnSerialTypes.length + ' columns', { columnSerialTypes });
+
+        for (const serialType of columnSerialTypes) {
+            if (serialType === 0) {
+                records.push({
+                    type: 'NULL',
+                    value: null
+                })
+            }
+
+            if (serialType === 1) {
+                records.push({
+                    type: 'int_8',
+                    value: bytes.readInt8(currentIndex)
+                })
+
+                currentIndex ++;
+            }
+
+            if (serialType === 2) {
+                records.push({
+                    type: 'int_16',
+                    value: bytes.readInt16BE(currentIndex)
+                })
+
+                currentIndex += 2;
+            }
+
+            if (serialType === 3) {
+                records.push({
+                    type: 'int_24',
+                    value: bytes.readIntBE(currentIndex, 3)
+                })
+
+                currentIndex += 3;
+            }
+
+            if (serialType === 4) {
+                records.push({
+                    type: 'int_32',
+                    value: bytes.readInt32BE(currentIndex) 
+                })
+
+                currentIndex += 4;
+            }
+
+            if (serialType === 5) {
+                records.push({
+                    type: 'int_48',
+                    value: bytes.readIntBE(currentIndex, 6)
+                })
+
+                currentIndex += 6;
+            }
+
+            if (serialType === 6) {
+                records.push({
+                    type: 'int_64',
+                    value: Number(bytes.readBigInt64BE(currentIndex)) 
+                })
+
+                currentIndex += 8;
+            }
+
+            if (serialType === 7) {
+                records.push({
+                    type: 'float_64',
+                    value: bytes.readDoubleBE(currentIndex) 
+                })
+
+                currentIndex += 8;
+            }
+
+            if (serialType === 8) {
+                records.push({
+                    type: '0',
+                    value: 0
+                })
+            }
+
+            if (serialType === 9) {
+                records.push({
+                    type: '1',
+                    value: 1
+                })
+            }
+
+            if (serialType === 10 || serialType === 11) {
+                records.push({
+                    type: 'reserved',
+                    value: null
+                })
+            }
+
+            if (serialType >= 12 && serialType % 2 === 0) {
+                const blobLength = (serialType - 12) / 2;
+                records.push({
+                    type: 'blob',
+                    value: [...bytes.subarray(currentIndex, currentIndex + blobLength)]
+                })
+
+                currentIndex += blobLength;
+            }
+
+            if (serialType >= 13 && serialType % 2 === 1) {
+                const textLength = (serialType - 13) / 2;
+                const textBuffer = bytes.subarray(currentIndex, currentIndex + textLength);
+
+                // TODO: support utf-16be.
+                const value = dbHeader.textEncoding === 'utf16le' || dbHeader.textEncoding === 'utf8' ? textBuffer.toString(dbHeader.textEncoding) : textBuffer.toString('utf-8');
+
+                records.push({
+                    type: 'text',
+                    value
+                })
+
+                currentIndex += textLength;
+            }
+        }
+
+        return records;
+    }
+
     static parsePageType(bytes: Buffer): BTreePageType {
         const value = bytes.readUint8(0);
 
@@ -226,6 +374,7 @@ export class DatabaseFileBTreePageUtil {
                 rowId,
                 data: data.toString("utf8"),
                 overflowPage,
+                records: this.parseRecord(data, dbHeader)
             };
             return cell;
         });
@@ -238,12 +387,22 @@ export class DatabaseFileBTreePageUtil {
         pageNumber: number,
         dbHeader: DatabaseHeader
     ) {
-        const header = this.parseHeader(
-            pageNumber === 0 ? bytes.subarray(100) : bytes
-        );
+        try {
+            const header = this.parseHeader(
+                pageNumber === 0 ? bytes.subarray(100) : bytes
+            );
 
-        const parsed = this.parseBTreeTableLeaf(bytes, dbHeader, header);
+            // testing
+            if (header.cellContentStartIndex !== 3418) {
+                return undefined;
+            }
 
-        return { header, parsed };
+            const parsed = this.parseBTreeTableLeaf(bytes, dbHeader, header);
+    
+            return { header, parsed };    
+        } catch(err) {
+            console.error(err);
+            return undefined;
+        }
     }
 }
