@@ -54,7 +54,7 @@ export class DatabaseFile extends File {
             return [];
         }
 
-        return page.rows.filter(r => r.records[1].value === "mods").map<MasterSchemaEntry>((row) => {
+        return page.rows.map<MasterSchemaEntry>((row) => {
             const [
                 typeRecord,
                 nameRecord,

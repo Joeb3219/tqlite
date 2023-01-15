@@ -348,7 +348,7 @@ export class DatabaseFileBTreePageUtil {
 
             const usableSize =
                 dbHeader.pageSizeBytes - dbHeader.unusedReservePageSpace;
-            const maxPayload = usableSize - 35 - currentIndex;
+            const maxPayload = usableSize - 35;
             const minPayload = ((usableSize - 12) * 32) / 255 - 23;
             const K =
                 minPayload + ((payloadSize - minPayload) % (usableSize - 4));
@@ -423,10 +423,6 @@ export class DatabaseFileBTreePageUtil {
                 pageNumber
             );
 
-            // if (pageNumber !== 16) {
-            //     return undefined;
-            // }
-
             switch (header.type) {
                 case 'table_interior':
                     return this.parseBTreeTableInterior(bytes, dbHeader, header);
@@ -438,7 +434,7 @@ export class DatabaseFileBTreePageUtil {
                     return undefined;
             }
         } catch (err) {
-            console.error(`Error on page ${pageNumber}`, err);
+            if(pageNumber === 22) console.error(`Error on page ${pageNumber}`, err);
             return undefined;
         }
     }
