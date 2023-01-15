@@ -1,8 +1,10 @@
 import _ from "lodash";
-import { BTreePageOfType, DatabaseHeader } from "./DatabaseFile.types";
+import { BTreePage, DatabaseHeader } from "./DatabaseFile.types";
 import { DatabaseFileBTreePageUtil } from "./DatabaseFileBTreePage";
 import { DatabaseFileHeaderUtil } from "./DatabaseFileHeader";
 import { File } from "./File";
+
+type Row = (string | number | boolean | null | number[])[];
 
 export type MasterSchemaEntry = {
     type: "table" | "index" | "unknown";
@@ -10,14 +12,43 @@ export type MasterSchemaEntry = {
     tbl_name: string;
     rootpage: number;
     sql?: string;
+    rows: Row[];
 };
 
 export type MasterSchema = MasterSchemaEntry[];
 
 export class DatabaseFile extends File {
-    static readMasterSchema(
-        page: BTreePageOfType<"table_leaf">
-    ): MasterSchemaEntry[] {
+    pages: Record<number, BTreePage> = {};
+
+    getTableRows(pageNumber: number): Row[] {
+        const page = this.pages[pageNumber - 1];
+
+        if (page?.type !== "table_leaf") {
+            console.log("encountered non leaf", { pageNumber, page });
+            return [];
+        }
+
+        return page.rows.map<Row>((recordRow) => {
+            return recordRow.records.map((r) => r.value);
+        });
+    }
+
+    findMasterSchemaPage(): BTreePage | undefined {
+        if (this.pages[0]?.type === "table_leaf") {
+            return this.pages[0];
+        }
+
+        const redirect = this.pages[0].pointers[0]?.pageNumber;
+        return this.pages[redirect];
+    }
+
+    readMasterSchema(): MasterSchemaEntry[] {
+        const page = this.findMasterSchemaPage();
+
+        if (page?.type !== "table_leaf") {
+            return [];
+        }
+
         return page.rows.map<MasterSchemaEntry>((row) => {
             const [
                 typeRecord,
@@ -72,6 +103,10 @@ export class DatabaseFile extends File {
                         ? "index"
                         : "unknown",
                 sql: sqlRecord?.type === "text" ? sqlRecord.value : undefined,
+                rows:
+                    rootPageRecord.value !== 0
+                        ? this.getTableRows(rootPageRecord.value)
+                        : [],
             };
         });
     }
@@ -79,44 +114,37 @@ export class DatabaseFile extends File {
     readDatabase() {
         const header = DatabaseFileHeaderUtil.parseHeader(this);
 
-        const pages = _.range(0, header.databaseFileSizeInPages).map(
-            (pageIdx) => {
-                const page = this.readPage(header, pageIdx);
-                const result = DatabaseFileBTreePageUtil.parseBTreePage(
-                    page,
-                    pageIdx,
-                    header
-                );
+        // Load all pages into the class
+        _.range(0, header.databaseFileSizeInPages).forEach((pageIdx) => {
+            this.loadPage(header, pageIdx);
+        });
 
-                if (!result) {
-                    return;
-                }
-
-                if (pageIdx === 21 && result.type === "table_leaf") {
-                    const schema = DatabaseFile.readMasterSchema(result);
-                    console.log(JSON.stringify(schema, null, 2));
-                }
-
-                return;
-            }
-        );
-
-        return { header, pages: [] };
+        const masterSchema = this.readMasterSchema();
+        return masterSchema;
     }
 
-    readPage(header: DatabaseHeader, pageNumber: number): Buffer {
+    loadPage(header: DatabaseHeader, pageNumber: number) {
         // If all pages are of size N, we can easily compute the starting address.
-        // The first page contains the header that the page size and other info came from.
-        // Readers won't want this data, so we just skip past it.
         const realStartIdx = header.pageSizeBytes * pageNumber;
-        const modifiedStartIdx =
-            pageNumber === 0 ? realStartIdx + 100 : realStartIdx;
 
         // We aren't always going to return `header.pageSizeBytes` bytes.
         // This is fine.
-        return this.data.subarray(
+        const data = this.data.subarray(
             realStartIdx,
             realStartIdx + header.pageSizeBytes
         );
+
+        const result = DatabaseFileBTreePageUtil.parseBTreePage(
+            data,
+            pageNumber,
+            header
+        );
+
+        if (!result) {
+            console.error(`Failed to parse page ${pageNumber}`);
+            return;
+        }
+
+        this.pages[pageNumber] = result;
     }
 }
