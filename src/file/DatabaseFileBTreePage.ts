@@ -2,6 +2,7 @@ import _ from "lodash";
 import {
     BTreeHeader,
     BTreeHeaderCommon,
+    BTreeIndexData,
     BTreePage,
     BTreePageOfType,
     BTreePageType,
@@ -34,11 +35,6 @@ export class DatabaseFileBTreePageUtil {
 
             columnSerialTypes.push(serialType);
         }
-
-        console.log("there are " + columnSerialTypes.length + " columns", {
-            columnSerialTypes,
-            headerSize,
-        });
 
         for (const serialType of columnSerialTypes) {
             if (serialType === 0) {
@@ -269,6 +265,65 @@ export class DatabaseFileBTreePageUtil {
         );
     }
 
+    static parseBTreeIndexLeaf(
+        bytes: Buffer,
+        dbHeader: DatabaseHeader,
+        pageHeader: BTreeHeader
+    ): BTreePageOfType<'index_leaf'> {
+        if (pageHeader.type !== 'index_leaf') {
+            throw new Error("Page is not an index leaf");
+        }
+
+        const offsets = this.getCellOffsets(bytes, pageHeader);
+        const indices = offsets.map<BTreeIndexData>(offset => {
+            let currentIndex = offset;
+            const { value: payloadSize, length: payloadSizeLength } =
+                this.readVarInt(bytes, currentIndex);
+            currentIndex += payloadSizeLength;
+
+            const usableSize =
+                dbHeader.pageSizeBytes - dbHeader.unusedReservePageSpace;
+            const maxPayload = ((usableSize-12)*64/255)-23;
+            const minPayload = ((usableSize - 12) * 32) / 255 - 23;
+            const K =
+                minPayload + ((payloadSize - minPayload) % (usableSize - 4));
+            const storedSize = Math.floor(
+                payloadSize <= maxPayload
+                    ? payloadSize
+                    : payloadSize > maxPayload && K <= maxPayload
+                    ? K
+                    : minPayload
+            );
+
+            const data = bytes.subarray(
+                currentIndex,
+                currentIndex + storedSize
+            );
+
+            currentIndex += storedSize;
+
+            const hasOverflow = storedSize < payloadSize;
+            const overflowPage = hasOverflow
+                ? bytes.readUint32BE(currentIndex)
+                : undefined;
+            if (hasOverflow) {
+                currentIndex += 4;
+            }
+
+            return {
+                payloadSize,
+                storedSize,
+                overflowPage,
+                records: this.parseRecord(data, dbHeader)
+            };
+        })
+
+        return {
+            type: 'index_leaf',
+            indices
+        }
+    }
+
     static parseBTreeTableLeaf(
         bytes: Buffer,
         dbHeader: DatabaseHeader,
@@ -310,11 +365,6 @@ export class DatabaseFileBTreePageUtil {
                 currentIndex + storedSize
             );
 
-            console.log(
-                `[${rowId}]: requesting ${storedSize} bytes starting at ${currentIndex}, buff is ${
-                    bytes.length
-                }. ${data.toString("utf8")}`
-            );
             currentIndex += storedSize; // - payloadSizeLength - rowIdLength;
 
             const hasOverflow = storedSize < payloadSize;
@@ -373,9 +423,20 @@ export class DatabaseFileBTreePageUtil {
                 pageNumber
             );
 
-            return header.type === "table_leaf"
-                ? this.parseBTreeTableLeaf(bytes, dbHeader, header)
-                : this.parseBTreeTableInterior(bytes, dbHeader, header);
+            // if (pageNumber !== 16) {
+            //     return undefined;
+            // }
+
+            switch (header.type) {
+                case 'table_interior':
+                    return this.parseBTreeTableInterior(bytes, dbHeader, header);
+                case 'table_leaf':
+                    return this.parseBTreeTableLeaf(bytes, dbHeader, header);
+                case 'index_leaf':
+                    return this.parseBTreeIndexLeaf(bytes, dbHeader, header);
+                case 'index_interior':
+                    return undefined;
+            }
         } catch (err) {
             console.error(`Error on page ${pageNumber}`, err);
             return undefined;

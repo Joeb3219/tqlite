@@ -23,8 +23,13 @@ export class DatabaseFile extends File {
     getTableRows(pageNumber: number): Row[] {
         const page = this.pages[pageNumber - 1];
 
+        console.log(`Reading page ${pageNumber - 1}`)
+
+        if (page?.type === "table_interior") {
+            return page.pointers.flatMap(p => this.getTableRows(p.pageNumber));
+        }
+
         if (page?.type !== "table_leaf") {
-            console.log("encountered non leaf", { pageNumber, page });
             return [];
         }
 
@@ -34,11 +39,11 @@ export class DatabaseFile extends File {
     }
 
     findMasterSchemaPage(): BTreePage | undefined {
-        if (this.pages[0]?.type === "table_leaf") {
+        if (this.pages[0]?.type === "table_leaf" || this.pages[0]?.type === "index_leaf") {
             return this.pages[0];
         }
 
-        const redirect = this.pages[0].pointers[0]?.pageNumber;
+        const redirect = this.pages[0]?.pointers[0]?.pageNumber;
         return this.pages[redirect];
     }
 
@@ -49,7 +54,7 @@ export class DatabaseFile extends File {
             return [];
         }
 
-        return page.rows.map<MasterSchemaEntry>((row) => {
+        return page.rows.filter(r => r.records[1].value === "mods").map<MasterSchemaEntry>((row) => {
             const [
                 typeRecord,
                 nameRecord,
@@ -108,7 +113,7 @@ export class DatabaseFile extends File {
                         ? this.getTableRows(rootPageRecord.value)
                         : [],
             };
-        });
+        })
     }
 
     readDatabase() {
@@ -141,7 +146,7 @@ export class DatabaseFile extends File {
         );
 
         if (!result) {
-            console.error(`Failed to parse page ${pageNumber}`);
+            // console.error(`Failed to parse page ${pageNumber}`);
             return;
         }
 
