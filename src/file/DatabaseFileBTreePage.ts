@@ -12,6 +12,8 @@ import {
     DatabaseHeader,
 } from "./DatabaseFile.types";
 
+type RequestAdditionalPageFunction = (pageNumber: number) => Buffer;
+
 export class DatabaseFileBTreePageUtil {
     static parseRecord(bytes: Buffer, dbHeader: DatabaseHeader): BTreeRecord[] {
         if (bytes.length === 0) {
@@ -169,7 +171,8 @@ export class DatabaseFileBTreePageUtil {
         return records;
     }
 
-    static parsePageType(bytes: Buffer): BTreePageType {
+    // Returns undefined if the provided page is not a BTree, typically meaning it's an overflow page.
+    static parsePageType(bytes: Buffer): BTreePageType | undefined {
         const value = bytes.readUint8(0);
 
         if (value === 2) {
@@ -188,13 +191,19 @@ export class DatabaseFileBTreePageUtil {
             return "table_leaf";
         }
 
-        throw new Error(
-            `Page type must be either 2, 5, 10, or 13, but found ${value}`
-        );
+        return undefined;
     }
 
-    static parseHeader(bytes: Buffer, pageNumber: number): BTreeHeader {
+    // Returns undefined if the provided page is not a BTree, typically meaning it's an overflow page.
+    static parseHeader(
+        bytes: Buffer,
+        pageNumber: number
+    ): BTreeHeader | undefined {
         const pageType = this.parsePageType(bytes);
+
+        if (!pageType) {
+            return undefined;
+        }
 
         const startIdx = bytes.readUint16BE(5);
         const commonData: BTreeHeaderCommon = {
@@ -324,10 +333,36 @@ export class DatabaseFileBTreePageUtil {
         };
     }
 
+    static readOverflowRecordData(
+        dbHeader: DatabaseHeader,
+        overflowPage: number,
+        requestAdditionalPage: RequestAdditionalPageFunction
+    ): Buffer {
+        const maxOverflowSize =
+            dbHeader.pageSizeBytes - dbHeader.unusedReservePageSpace - 4;
+
+        let currentPageNumber = overflowPage;
+        let fullBuffer: Buffer = Buffer.alloc(0);
+        // We read the current page until we reach a 0 page, which indicates we have read all of the data.
+        while (currentPageNumber > 0) {
+            const page = requestAdditionalPage(currentPageNumber);
+            const nextPageNumber = page.readInt32BE(0);
+
+            const contents = page.subarray(4);
+            fullBuffer = Buffer.from([...fullBuffer, ...contents]);
+
+            // If the next page number is 0, our loop will end.
+            currentPageNumber = nextPageNumber;
+        }
+
+        return fullBuffer;
+    }
+
     static parseBTreeTableLeaf(
         bytes: Buffer,
         dbHeader: DatabaseHeader,
-        pageHeader: BTreeHeader
+        pageHeader: BTreeHeader,
+        requestAdditionalPage: RequestAdditionalPageFunction
     ): BTreePageOfType<"table_leaf"> {
         if (pageHeader.type !== "table_leaf") {
             throw new Error("Page is not a table leaf");
@@ -360,7 +395,7 @@ export class DatabaseFileBTreePageUtil {
                     : minPayload
             );
 
-            const data = bytes.subarray(
+            const storedData = bytes.subarray(
                 currentIndex,
                 currentIndex + storedSize
             );
@@ -374,6 +409,17 @@ export class DatabaseFileBTreePageUtil {
             if (hasOverflow) {
                 currentIndex += 4;
             }
+
+            const overflowPageData = overflowPage
+                ? this.readOverflowRecordData(
+                      dbHeader,
+                      overflowPage,
+                      requestAdditionalPage
+                  )
+                : undefined;
+            const data = overflowPageData
+                ? Buffer.from([...storedData, ...overflowPageData])
+                : storedData;
 
             return {
                 payloadSize,
@@ -413,7 +459,8 @@ export class DatabaseFileBTreePageUtil {
     static parseBTreePage(
         bytes: Buffer,
         pageNumber: number,
-        dbHeader: DatabaseHeader
+        dbHeader: DatabaseHeader,
+        requestAdditionalPage: RequestAdditionalPageFunction
     ): BTreePage | undefined {
         try {
             const bytesWithoutPageZeroHeader =
@@ -423,6 +470,10 @@ export class DatabaseFileBTreePageUtil {
                 pageNumber
             );
 
+            if (!header) {
+                return undefined;
+            }
+
             switch (header.type) {
                 case "table_interior":
                     return this.parseBTreeTableInterior(
@@ -431,7 +482,12 @@ export class DatabaseFileBTreePageUtil {
                         header
                     );
                 case "table_leaf":
-                    return this.parseBTreeTableLeaf(bytes, dbHeader, header);
+                    return this.parseBTreeTableLeaf(
+                        bytes,
+                        dbHeader,
+                        header,
+                        requestAdditionalPage
+                    );
                 case "index_leaf":
                     return this.parseBTreeIndexLeaf(bytes, dbHeader, header);
                 case "index_interior":

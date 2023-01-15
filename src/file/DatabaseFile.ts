@@ -23,8 +23,6 @@ export class DatabaseFile extends File {
     getTableRows(pageNumber: number): Row[] {
         const page = this.pages[pageNumber - 1];
 
-        console.log(`Reading page ${pageNumber - 1}`);
-
         if (page?.type === "table_interior") {
             return page.pointers.flatMap((p) =>
                 this.getTableRows(p.pageNumber)
@@ -133,25 +131,29 @@ export class DatabaseFile extends File {
         return masterSchema;
     }
 
-    loadPage(header: DatabaseHeader, pageNumber: number) {
+    getBytesOnPage(header: DatabaseHeader, pageNumber: number): Buffer {
         // If all pages are of size N, we can easily compute the starting address.
         const realStartIdx = header.pageSizeBytes * pageNumber;
 
         // We aren't always going to return `header.pageSizeBytes` bytes.
         // This is fine.
-        const data = this.data.subarray(
+        return this.data.subarray(
             realStartIdx,
             realStartIdx + header.pageSizeBytes
         );
+    }
 
+    loadPage(header: DatabaseHeader, pageNumber: number) {
+        const data = this.getBytesOnPage(header, pageNumber);
         const result = DatabaseFileBTreePageUtil.parseBTreePage(
             data,
             pageNumber,
-            header
+            header,
+            (pageNumber) => this.getBytesOnPage(header, pageNumber - 1)
         );
 
         if (!result) {
-            console.error(`Failed to parse page ${pageNumber}`);
+            console.info(`Page ${pageNumber} was not parsed as a BTree Page.`);
             return;
         }
 
