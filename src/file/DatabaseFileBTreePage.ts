@@ -1,89 +1,15 @@
 import _ from "lodash";
-import { DatabaseHeader } from "./DatabaseFile.types";
-
-export type BTreeType =
-    | "index_interior"
-    | "index_leaf"
-    | "table_interior"
-    | "table_leaf";
-
-type BTreeHeaderCommon = {
-    firstFreeblockIndex: number;
-    numberCells: number;
-    cellContentStartIndex: number;
-    numberFragmentedFreeBytesInCellContent: number;
-    pageNumber: number;
-};
-
-export type BTreeHeader =
-    | ({
-          type: "index_interior" | "index_leaf" | "table_leaf";
-      } & BTreeHeaderCommon)
-    | ({
-          type: "table_interior";
-          rightmostPointer: number;
-      } & BTreeHeaderCommon);
-
-export type BTreePageType = BTreeHeader["type"];
-
-export type BTreeRecord =
-    | {
-          type: "NULL";
-          value: null;
-      }
-    | {
-          type: "int_8";
-          value: number;
-      }
-    | {
-          type: "int_16";
-          value: number;
-      }
-    | {
-          type: "int_24";
-          value: number;
-      }
-    | {
-          type: "int_32";
-          value: number;
-      }
-    | {
-          type: "int_48";
-          value: number;
-      }
-    | {
-          type: "int_64";
-          value: number;
-      }
-    | {
-          type: "float_64";
-          value: number;
-      }
-    | {
-          type: "0";
-          value: 0;
-      }
-    | {
-          type: "1";
-          value: 1;
-      }
-    | {
-          type: "reserved";
-          value: null;
-      }
-    | {
-          type: "blob";
-          value: number[];
-      }
-    | {
-          type: "text";
-          value: string;
-      };
-
-export type BTreeTablePagePointer = {
-    key: number;
-    pageNumber: number;
-};
+import {
+    BTreeHeader,
+    BTreeHeaderCommon,
+    BTreePage,
+    BTreePageOfType,
+    BTreePageType,
+    BTreeRecord,
+    BTreeRow,
+    BTreeTablePagePointer,
+    DatabaseHeader,
+} from "./DatabaseFile.types";
 
 export class DatabaseFileBTreePageUtil {
     static parseRecord(bytes: Buffer, dbHeader: DatabaseHeader): BTreeRecord[] {
@@ -347,13 +273,13 @@ export class DatabaseFileBTreePageUtil {
         bytes: Buffer,
         dbHeader: DatabaseHeader,
         pageHeader: BTreeHeader
-    ) {
+    ): BTreePageOfType<"table_leaf"> {
         if (pageHeader.type !== "table_leaf") {
-            return undefined;
+            throw new Error("Page is not a table leaf");
         }
 
         const offsets = this.getCellOffsets(bytes, pageHeader);
-        const parsedCells = offsets.map((offset) => {
+        const rows = offsets.map<BTreeRow>((offset) => {
             let currentIndex = offset;
             const { value: payloadSize, length: payloadSizeLength } =
                 this.readVarInt(bytes, currentIndex);
@@ -399,32 +325,29 @@ export class DatabaseFileBTreePageUtil {
                 currentIndex += 4;
             }
 
-            const cell = {
+            return {
                 payloadSize,
                 storedSize,
                 rowId,
-                data: data.toString("utf8"),
                 overflowPage,
-                hasOverflow,
                 records: this.parseRecord(data, dbHeader),
             };
-            return cell;
         });
 
-        return parsedCells;
+        return { type: "table_leaf", rows };
     }
 
     static parseBTreeTableInterior(
         bytes: Buffer,
         dbHeader: DatabaseHeader,
         pageHeader: BTreeHeader
-    ) {
+    ): BTreePageOfType<"table_interior"> {
         if (pageHeader.type !== "table_interior") {
-            return undefined;
+            throw new Error("Not an interior page");
         }
 
         const offsets = this.getCellOffsets(bytes, pageHeader);
-        const parsedCells = offsets.map<BTreeTablePagePointer>((offset) => {
+        const pointers = offsets.map<BTreeTablePagePointer>((offset) => {
             let currentIndex = offset;
             const pageNumber = bytes.readUint32BE(currentIndex);
             offset += 4;
@@ -434,14 +357,14 @@ export class DatabaseFileBTreePageUtil {
             };
         });
 
-        return parsedCells;
+        return { type: "table_interior", pointers };
     }
 
     static parseBTreePage(
         bytes: Buffer,
         pageNumber: number,
         dbHeader: DatabaseHeader
-    ) {
+    ): BTreePage | undefined {
         try {
             const bytesWithoutPageZeroHeader =
                 pageNumber === 0 ? bytes.subarray(100) : bytes;
@@ -450,20 +373,11 @@ export class DatabaseFileBTreePageUtil {
                 pageNumber
             );
 
-            // testing
-            if (pageNumber !== 0 && pageNumber !== 20) {
-                // && header.cellContentStartIndex !== 3418 ) {
-                return undefined;
-            }
-
-            const parsed =
-                header.type === "table_leaf"
-                    ? this.parseBTreeTableLeaf(bytes, dbHeader, header)
-                    : this.parseBTreeTableInterior(bytes, dbHeader, header);
-
-            return { pageNumber, header, parsed };
+            return header.type === "table_leaf"
+                ? this.parseBTreeTableLeaf(bytes, dbHeader, header)
+                : this.parseBTreeTableInterior(bytes, dbHeader, header);
         } catch (err) {
-            console.error(err);
+            console.error(`Error on page ${pageNumber}`, err);
             return undefined;
         }
     }
