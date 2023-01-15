@@ -98,7 +98,6 @@ export class DatabaseFileBTreePageUtil {
             bytes,
             currentIndex
         );
-        const numColumns = headerSize - headerSizeLength;
         currentIndex += headerSizeLength;
 
         const columnSerialTypes: number[] = [];
@@ -112,6 +111,7 @@ export class DatabaseFileBTreePageUtil {
 
         console.log("there are " + columnSerialTypes.length + " columns", {
             columnSerialTypes,
+            headerSize,
         });
 
         for (const serialType of columnSerialTypes) {
@@ -304,37 +304,30 @@ export class DatabaseFileBTreePageUtil {
         idx: number
     ): { value: number; length: number } {
         const candidateBytes = bytes.subarray(idx, idx + 9);
-        const firstByte = candidateBytes.readUInt8(0);
 
-        if (firstByte >= 0 && firstByte <= 240) {
-            return { value: firstByte, length: 1 };
-        }
+        // A byte will have a 1 in the high bit if there are no more bytes following it.
+        // Thus, we find the first high bit equal to 1, and then can add the bytes.
+        // There is only one complication: if we are using every byte, we use all 8 bits of the last byte.
+        const firstHighBitByteIndexCandidate = candidateBytes.findIndex(
+            (b) => (b & (1 << 7)) === 0
+        );
+        const firstHighBitByteIndex =
+            firstHighBitByteIndexCandidate === -1
+                ? 8
+                : firstHighBitByteIndexCandidate;
 
-        if (firstByte >= 241 && firstByte <= 248) {
-            return {
-                value:
-                    240 + 256 * (firstByte - 241) + candidateBytes.readUInt8(1),
-                length: 2,
-            };
-        }
+        const value = candidateBytes.reduce((state, byte, idx) => {
+            const numBits = idx === 8 ? 8 : 7;
+            const mask = numBits === 8 ? 0b1111_1111 : 0b0111_1111;
 
-        if (firstByte === 249) {
-            return {
-                value:
-                    2288 +
-                    256 * candidateBytes.readUInt8(1) +
-                    candidateBytes.readUInt8(2),
-                length: 4,
-            };
-        }
+            if (idx > firstHighBitByteIndex) {
+                return state;
+            }
 
-        const numBytes = firstByte - 250 + 3;
-        return {
-            value: _.range(0, numBytes).reduce((state, idx) => {
-                return (state << 8) | candidateBytes.readUint8(idx);
-            }, 0x00),
-            length: numBytes + 1,
-        };
+            return (state << numBits) | (byte & mask);
+        }, 0);
+
+        return { value, length: firstHighBitByteIndex + 1 };
     }
 
     static getCellOffsets(bytes: Buffer, pageHeader: BTreeHeader): number[] {
@@ -355,10 +348,7 @@ export class DatabaseFileBTreePageUtil {
         dbHeader: DatabaseHeader,
         pageHeader: BTreeHeader
     ) {
-        if (
-            pageHeader.type !== "table_leaf" &&
-            pageHeader.type !== "table_interior"
-        ) {
+        if (pageHeader.type !== "table_leaf") {
             return undefined;
         }
 
@@ -377,7 +367,7 @@ export class DatabaseFileBTreePageUtil {
 
             const usableSize =
                 dbHeader.pageSizeBytes - dbHeader.unusedReservePageSpace;
-            const maxPayload = usableSize - 35;
+            const maxPayload = usableSize - 35 - currentIndex;
             const minPayload = ((usableSize - 12) * 32) / 255 - 23;
             const K =
                 minPayload + ((payloadSize - minPayload) % (usableSize - 4));
@@ -393,6 +383,12 @@ export class DatabaseFileBTreePageUtil {
                 currentIndex,
                 currentIndex + storedSize
             );
+
+            console.log(
+                `[${rowId}]: requesting ${storedSize} bytes starting at ${currentIndex}, buff is ${
+                    bytes.length
+                }. ${data.toString("utf8")}`
+            );
             currentIndex += storedSize; // - payloadSizeLength - rowIdLength;
 
             const hasOverflow = storedSize < payloadSize;
@@ -405,9 +401,11 @@ export class DatabaseFileBTreePageUtil {
 
             const cell = {
                 payloadSize,
+                storedSize,
                 rowId,
                 data: data.toString("utf8"),
                 overflowPage,
+                hasOverflow,
                 records: this.parseRecord(data, dbHeader),
             };
             return cell;
@@ -427,7 +425,6 @@ export class DatabaseFileBTreePageUtil {
 
         const offsets = this.getCellOffsets(bytes, pageHeader);
         const parsedCells = offsets.map<BTreeTablePagePointer>((offset) => {
-            console.log("parsing at " + offset);
             let currentIndex = offset;
             const pageNumber = bytes.readUint32BE(currentIndex);
             offset += 4;
@@ -454,7 +451,7 @@ export class DatabaseFileBTreePageUtil {
             );
 
             // testing
-            if (pageNumber !== 0) {
+            if (pageNumber !== 0 && pageNumber !== 20) {
                 // && header.cellContentStartIndex !== 3418 ) {
                 return undefined;
             }
