@@ -269,13 +269,13 @@ export class DatabaseFileBTreePageUtil {
         bytes: Buffer,
         dbHeader: DatabaseHeader,
         pageHeader: BTreeHeader
-    ): BTreePageOfType<'index_leaf'> {
-        if (pageHeader.type !== 'index_leaf') {
+    ): BTreePageOfType<"index_leaf"> {
+        if (pageHeader.type !== "index_leaf") {
             throw new Error("Page is not an index leaf");
         }
 
         const offsets = this.getCellOffsets(bytes, pageHeader);
-        const indices = offsets.map<BTreeIndexData>(offset => {
+        const indices = offsets.map<BTreeIndexData>((offset) => {
             let currentIndex = offset;
             const { value: payloadSize, length: payloadSizeLength } =
                 this.readVarInt(bytes, currentIndex);
@@ -283,7 +283,7 @@ export class DatabaseFileBTreePageUtil {
 
             const usableSize =
                 dbHeader.pageSizeBytes - dbHeader.unusedReservePageSpace;
-            const maxPayload = ((usableSize-12)*64/255)-23;
+            const maxPayload = ((usableSize - 12) * 64) / 255 - 23;
             const minPayload = ((usableSize - 12) * 32) / 255 - 23;
             const K =
                 minPayload + ((payloadSize - minPayload) % (usableSize - 4));
@@ -314,14 +314,14 @@ export class DatabaseFileBTreePageUtil {
                 payloadSize,
                 storedSize,
                 overflowPage,
-                records: this.parseRecord(data, dbHeader)
+                records: this.parseRecord(data, dbHeader),
             };
-        })
+        });
 
         return {
-            type: 'index_leaf',
-            indices
-        }
+            type: "index_leaf",
+            indices,
+        };
     }
 
     static parseBTreeTableLeaf(
@@ -424,17 +424,21 @@ export class DatabaseFileBTreePageUtil {
             );
 
             switch (header.type) {
-                case 'table_interior':
-                    return this.parseBTreeTableInterior(bytes, dbHeader, header);
-                case 'table_leaf':
+                case "table_interior":
+                    return this.parseBTreeTableInterior(
+                        bytes,
+                        dbHeader,
+                        header
+                    );
+                case "table_leaf":
                     return this.parseBTreeTableLeaf(bytes, dbHeader, header);
-                case 'index_leaf':
+                case "index_leaf":
                     return this.parseBTreeIndexLeaf(bytes, dbHeader, header);
-                case 'index_interior':
+                case "index_interior":
                     return undefined;
             }
         } catch (err) {
-            if(pageNumber === 22) console.error(`Error on page ${pageNumber}`, err);
+            console.error(`Error on page ${pageNumber}`, err);
             return undefined;
         }
     }

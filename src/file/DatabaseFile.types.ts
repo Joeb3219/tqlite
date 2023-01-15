@@ -127,9 +127,9 @@ export type BTreeRow = {
 };
 
 export type BTreeIndexData = {
-    payloadSize: number,
-    storedSize: number,
-    overflowPage: number | undefined,
+    payloadSize: number;
+    storedSize: number;
+    overflowPage: number | undefined;
     records: BTreeRecord[];
 };
 
@@ -143,9 +143,9 @@ export type BTreePage =
           pointers: BTreeTablePagePointer[];
       }
     | {
-        type: 'index_leaf';
-        indices: BTreeIndexData[];
-    };
+          type: "index_leaf";
+          indices: BTreeIndexData[];
+      };
 
 export type BTreePageOfType<T extends BTreePage["type"]> = Extract<
     BTreePage,
