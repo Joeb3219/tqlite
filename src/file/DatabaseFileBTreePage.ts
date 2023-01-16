@@ -453,7 +453,13 @@ export class DatabaseFileBTreePageUtil {
             };
         });
 
-        return { type: "table_interior", pointers };
+        return {
+            type: "table_interior",
+            pointers: [
+                ...pointers,
+                { key: 0, pageNumber: pageHeader.rightmostPointer },
+            ],
+        };
     }
 
     static parseBTreePage(

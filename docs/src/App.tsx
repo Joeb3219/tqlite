@@ -1,4 +1,4 @@
-import { DatabaseFile, MasterSchemaEntry } from "@joeb3219/squeel";
+import { BTreePage, DatabaseFile, MasterSchemaEntry } from "@joeb3219/squeel";
 import {
     Button,
     Divider,
@@ -46,10 +46,7 @@ const Header: React.FC = () => {
     );
 };
 
-const TableViewer: React.VFC<{ database: DatabaseFile; tableName: string }> = ({
-    database,
-    tableName,
-}) => {
+const TableViewer: React.VFC<{ database: DatabaseFile }> = ({ database }) => {
     const tables = React.useMemo(() => {
         const schema = database.readMasterSchema();
         return schema.filter((s) => s.type === "table");
@@ -97,11 +94,38 @@ const TableViewer: React.VFC<{ database: DatabaseFile; tableName: string }> = ({
     );
 };
 
-const PageViewer: React.VFC<{ database: DatabaseFile; pageNumber: number }> = ({
-    database,
-    pageNumber,
-}) => {
-    return <strong>page viewer not yet implemented</strong>;
+const PageViewer: React.VFC<{ database: DatabaseFile }> = ({ database }) => {
+    const [selectedPage, setSelectedPage] = React.useState<
+        BTreePage | undefined
+    >(undefined);
+    const pageKeys = Object.keys(database.pages);
+
+    return (
+        <Grid container direction={"column"}>
+            <Grid item>
+                <Select
+                    onChange={(event) =>
+                        setSelectedPage(
+                            database.pages[
+                                typeof event.target.value === "number"
+                                    ? event.target.value
+                                    : -1
+                            ]
+                        )
+                    }
+                >
+                    {pageKeys.map((pageNumber) => (
+                        <MenuItem value={parseInt(pageNumber)}>
+                            {parseInt(pageNumber) + 1}
+                        </MenuItem>
+                    ))}
+                </Select>
+            </Grid>
+            {selectedPage && (
+                <Grid item>{JSON.stringify(selectedPage, null, 2)}</Grid>
+            )}
+        </Grid>
+    );
 };
 
 const SchemaViewer: React.VFC<{ database: DatabaseFile }> = ({ database }) => {
@@ -163,16 +187,10 @@ const BodyPanel: React.FC<BodyPanelProps> = (props) => {
                                 <SchemaViewer database={props.database} />
                             )}
                             {value === 1 && (
-                                <TableViewer
-                                    database={props.database}
-                                    tableName={""}
-                                />
+                                <TableViewer database={props.database} />
                             )}
                             {value === 2 && (
-                                <PageViewer
-                                    database={props.database}
-                                    pageNumber={1}
-                                />
+                                <PageViewer database={props.database} />
                             )}
                         </>
                     </Grid>

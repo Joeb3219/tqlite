@@ -11,12 +11,12 @@ type TokenType =
 const TokenParseMap: Record<TokenType, (str: string) => boolean> = {
     CREATE: (str) => str === "CREATE",
     TABLE: (str) => str === "TABLE",
-    BACKTICK: (str) => str === `\``,
+    BACKTICK: (str) => str === `\`` || str === '"',
     "(": (str) => str === "(",
     ")": (str) => str === ")",
     ",": (str) => str === ",",
     identifier: (str) => {
-        const match = str.match(/[a-zA-Z_0-9']*$/);
+        const match = str.match(/[a-zA-Z_0-9'\[\]]*$/);
         return !!match && match[0].length === str.length;
     },
     number: (str) =>

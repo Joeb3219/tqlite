@@ -54,99 +54,101 @@ export class DatabaseFile extends File {
         return tableParser.tableDefinition;
     }
 
-    findMasterSchemaPage(): BTreePage | undefined {
+    findMasterSchemaPages(): BTreePage[] {
         if (
             this.pages[0]?.type === "table_leaf" ||
             this.pages[0]?.type === "index_leaf"
         ) {
-            return this.pages[0];
+            return [this.pages[0]];
         }
 
-        const redirect = this.pages[0]?.pointers[0]?.pageNumber;
-        return this.pages[redirect - 1];
+        const pages =
+            this.pages[0]?.pointers.map((p) => p.pageNumber - 1) ?? [];
+        return pages.map((p) => this.pages[p]);
     }
 
     readMasterSchema(): MasterSchemaEntry[] {
-        const page = this.findMasterSchemaPage();
+        const pages = this.findMasterSchemaPages();
 
-        if (page?.type !== "table_leaf") {
-            return [];
-        }
-
-        return page.rows.map<MasterSchemaEntry>((row) => {
-            const [
-                typeRecord,
-                nameRecord,
-                tableNameRecord,
-                rootPageRecord,
-                sqlRecord,
-            ] = row.records;
-
-            if (typeRecord.type !== "text") {
-                throw new Error(
-                    `Expected 'type' to be of type 'text', but found ${typeRecord.type}`
-                );
+        return pages.flatMap((page) => {
+            if (page.type !== "table_leaf") {
+                return [];
             }
+            return page.rows.map<MasterSchemaEntry>((row) => {
+                const [
+                    typeRecord,
+                    nameRecord,
+                    tableNameRecord,
+                    rootPageRecord,
+                    sqlRecord,
+                ] = row.records;
 
-            if (nameRecord.type !== "text") {
-                throw new Error(
-                    `Expected 'name' to be of type 'text', but found ${nameRecord.type}`
-                );
-            }
+                if (typeRecord.type !== "text") {
+                    throw new Error(
+                        `Expected 'type' to be of type 'text', but found ${typeRecord.type}`
+                    );
+                }
 
-            if (tableNameRecord.type !== "text") {
-                throw new Error(
-                    `Expected 'tbl_name' to be of type 'text', but found ${tableNameRecord.type}`
-                );
-            }
+                if (nameRecord.type !== "text") {
+                    throw new Error(
+                        `Expected 'name' to be of type 'text', but found ${nameRecord.type}`
+                    );
+                }
 
-            if (rootPageRecord.type !== "int_8") {
-                throw new Error(
-                    `Expected 'rootpage' to be of type 'int', but found ${rootPageRecord.type}`
-                );
-            }
+                if (tableNameRecord.type !== "text") {
+                    throw new Error(
+                        `Expected 'tbl_name' to be of type 'text', but found ${tableNameRecord.type}`
+                    );
+                }
 
-            if (
-                sqlRecord &&
-                sqlRecord.type !== "text" &&
-                sqlRecord.type !== "NULL"
-            ) {
-                throw new Error(
-                    `Expected 'sql' to be of type 'text' or 'NULL', but found ${sqlRecord.type}`
-                );
-            }
+                if (rootPageRecord.type !== "int_8") {
+                    throw new Error(
+                        `Expected 'rootpage' to be of type 'int', but found ${rootPageRecord.type}`
+                    );
+                }
 
-            const sql =
-                sqlRecord?.type === "text" ? sqlRecord.value : undefined;
-            const rows =
-                rootPageRecord.value !== 0
-                    ? this.getTableRows(rootPageRecord.value)
-                    : [];
-            const tableDefinition = this.parseTableDefinition(sql);
-            return {
-                name: nameRecord.value,
-                rootpage: rootPageRecord.value,
-                tbl_name: tableNameRecord.value,
-                type:
-                    typeRecord.value === "table"
-                        ? "table"
-                        : typeRecord.value === "index"
-                        ? "index"
-                        : "unknown",
-                sql,
-                rows,
-                tableDefinition,
-                zipped: rows.map((row) =>
-                    row.reduce((state, cell, idx) => {
-                        const column = tableDefinition?.columns[idx];
+                if (
+                    sqlRecord &&
+                    sqlRecord.type !== "text" &&
+                    sqlRecord.type !== "NULL"
+                ) {
+                    throw new Error(
+                        `Expected 'sql' to be of type 'text' or 'NULL', but found ${sqlRecord.type}`
+                    );
+                }
 
-                        return {
-                            ...state,
-                            [column?.name ?? `unknown_${idx}`]: cell,
-                        };
-                    }, {})
-                ),
-            };
+                const sql =
+                    sqlRecord?.type === "text" ? sqlRecord.value : undefined;
+                const rows =
+                    rootPageRecord.value !== 0
+                        ? this.getTableRows(rootPageRecord.value)
+                        : [];
+                const tableDefinition = this.parseTableDefinition(sql);
+                return {
+                    name: nameRecord.value,
+                    rootpage: rootPageRecord.value,
+                    tbl_name: tableNameRecord.value,
+                    type:
+                        typeRecord.value === "table"
+                            ? "table"
+                            : typeRecord.value === "index"
+                            ? "index"
+                            : "unknown",
+                    sql,
+                    rows,
+                    tableDefinition,
+                    zipped: rows.map((row) =>
+                        row.reduce((state, cell, idx) => {
+                            const column = tableDefinition?.columns[idx];
+
+                            return {
+                                ...state,
+                                [column?.name ?? `unknown_${idx}`]: cell,
+                            };
+                        }, {})
+                    ),
+                };
+            });
         });
     }
 
