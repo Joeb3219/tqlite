@@ -173,7 +173,7 @@ export class DatabaseFileBTreePageUtil {
 
     // Returns undefined if the provided page is not a BTree, typically meaning it's an overflow page.
     static parsePageType(bytes: Buffer): BTreePageType | undefined {
-        const value = bytes.readUint8(0);
+        const value = bytes.readUInt8(0);
 
         if (value === 2) {
             return "index_interior";
@@ -205,13 +205,13 @@ export class DatabaseFileBTreePageUtil {
             return undefined;
         }
 
-        const startIdx = bytes.readUint16BE(5);
+        const startIdx = bytes.readUInt16BE(5);
         const commonData: BTreeHeaderCommon = {
             pageNumber,
-            firstFreeblockIndex: bytes.readUint16BE(1),
-            numberCells: bytes.readUint16BE(3),
+            firstFreeblockIndex: bytes.readUInt16BE(1),
+            numberCells: bytes.readUInt16BE(3),
             cellContentStartIndex: startIdx === 0 ? 65536 : startIdx,
-            numberFragmentedFreeBytesInCellContent: bytes.readUint8(7),
+            numberFragmentedFreeBytesInCellContent: bytes.readUInt8(7),
         };
 
         if (pageType === "table_interior") {
@@ -270,7 +270,7 @@ export class DatabaseFileBTreePageUtil {
             startOffset + pageHeader.numberCells * 2
         );
         return _.range(0, pageHeader.numberCells).map((idx) =>
-            cellPointerBytes.readUint16BE(idx * 2)
+            cellPointerBytes.readUInt16BE(idx * 2)
         );
     }
 
@@ -313,7 +313,7 @@ export class DatabaseFileBTreePageUtil {
 
             const hasOverflow = storedSize < payloadSize;
             const overflowPage = hasOverflow
-                ? bytes.readUint32BE(currentIndex)
+                ? bytes.readUInt32BE(currentIndex)
                 : undefined;
             if (hasOverflow) {
                 currentIndex += 4;
@@ -404,7 +404,7 @@ export class DatabaseFileBTreePageUtil {
 
             const hasOverflow = storedSize < payloadSize;
             const overflowPage = hasOverflow
-                ? bytes.readUint32BE(currentIndex)
+                ? bytes.readUInt32BE(currentIndex)
                 : undefined;
             if (hasOverflow) {
                 currentIndex += 4;
@@ -445,7 +445,7 @@ export class DatabaseFileBTreePageUtil {
         const offsets = this.getCellOffsets(bytes, pageHeader);
         const pointers = offsets.map<BTreeTablePagePointer>((offset) => {
             let currentIndex = offset;
-            const pageNumber = bytes.readUint32BE(currentIndex);
+            const pageNumber = bytes.readUInt32BE(currentIndex);
             offset += 4;
             return {
                 pageNumber,

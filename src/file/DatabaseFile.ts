@@ -1,4 +1,8 @@
 import _ from "lodash";
+import {
+    TableDefinition,
+    TableDefinitionParser,
+} from "../parser/TableDefinition.parser";
 import { BTreePage, DatabaseHeader } from "./DatabaseFile.types";
 import { DatabaseFileBTreePageUtil } from "./DatabaseFileBTreePage";
 import { DatabaseFileHeaderUtil } from "./DatabaseFileHeader";
@@ -12,13 +16,16 @@ export type MasterSchemaEntry = {
     tbl_name: string;
     rootpage: number;
     sql?: string;
+    tableDefinition?: TableDefinition;
     rows: Row[];
+    zipped: any[];
 };
 
 export type MasterSchema = MasterSchemaEntry[];
 
 export class DatabaseFile extends File {
     pages: Record<number, BTreePage> = {};
+    schema: MasterSchemaEntry[] = [];
 
     getTableRows(pageNumber: number): Row[] {
         const page = this.pages[pageNumber - 1];
@@ -36,6 +43,15 @@ export class DatabaseFile extends File {
         return page.rows.map<Row>((recordRow) => {
             return recordRow.records.map((r) => r.value);
         });
+    }
+
+    parseTableDefinition(sql?: string): TableDefinition | undefined {
+        if (!sql) {
+            return undefined;
+        }
+
+        const tableParser = new TableDefinitionParser(sql);
+        return tableParser.tableDefinition;
     }
 
     findMasterSchemaPage(): BTreePage | undefined {
@@ -100,6 +116,13 @@ export class DatabaseFile extends File {
                 );
             }
 
+            const sql =
+                sqlRecord?.type === "text" ? sqlRecord.value : undefined;
+            const rows =
+                rootPageRecord.value !== 0
+                    ? this.getTableRows(rootPageRecord.value)
+                    : [];
+            const tableDefinition = this.parseTableDefinition(sql);
             return {
                 name: nameRecord.value,
                 rootpage: rootPageRecord.value,
@@ -110,11 +133,19 @@ export class DatabaseFile extends File {
                         : typeRecord.value === "index"
                         ? "index"
                         : "unknown",
-                sql: sqlRecord?.type === "text" ? sqlRecord.value : undefined,
-                rows:
-                    rootPageRecord.value !== 0
-                        ? this.getTableRows(rootPageRecord.value)
-                        : [],
+                sql,
+                rows,
+                tableDefinition,
+                zipped: rows.map((row) =>
+                    row.reduce((state, cell, idx) => {
+                        const column = tableDefinition?.columns[idx];
+
+                        return {
+                            ...state,
+                            [column?.name ?? `unknown_${idx}`]: cell,
+                        };
+                    }, {})
+                ),
             };
         });
     }
@@ -128,7 +159,7 @@ export class DatabaseFile extends File {
         });
 
         const masterSchema = this.readMasterSchema();
-        return masterSchema;
+        return (this.schema = masterSchema);
     }
 
     getBytesOnPage(header: DatabaseHeader, pageNumber: number): Buffer {

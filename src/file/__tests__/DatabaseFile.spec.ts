@@ -1,11 +1,15 @@
 import { DatabaseFile } from "../DatabaseFile";
 
+import fs from "fs";
+
 describe("DatabaseFile", () => {
     it("should work", () => {
-        const database = new DatabaseFile(
+        const f = fs.readFileSync(
             "/Users/joeb3219/Desktop/other_sample.sqlite"
         );
+        const database = new DatabaseFile(f);
         const res = JSON.stringify(database.readDatabase(), null, 2);
-        console.log(res);
+        fs.writeFileSync("/Users/joeb3219/Desktop/out.json", res);
+        // console.log(res);
     });
 });

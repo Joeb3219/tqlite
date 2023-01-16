@@ -1,0 +1,10 @@
+{
+    "extends": "@tsconfig/create-react-app",
+    "compilerOptions": {
+        "jsx": "react-jsx",
+        "paths": {
+            "@joeb3219/squeel": ["../src/index"]
+        }
+    },
+    "include": ["src"]
+}

@@ -1,11 +1,10 @@
-import fs from "fs";
 import _ from "lodash";
 
 export class File {
     data: Buffer;
 
-    constructor(private readonly path: string) {
-        this.data = fs.readFileSync(path);
+    constructor(private readonly bytes: ArrayBuffer | Buffer) {
+        this.data = Buffer.from(bytes);
     }
 
     readString(startPos: number, length: number): string {
