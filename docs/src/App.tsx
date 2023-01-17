@@ -15,6 +15,7 @@ import React from "react";
 import BaseHexEditor from "react-hex-editor";
 import "./App.css";
 
+import _ from "lodash";
 import DataGrid from "react-data-grid";
 import "react-data-grid/lib/styles.css";
 
@@ -55,9 +56,12 @@ const TableViewer: React.VFC<{ database: DatabaseFile }> = ({ database }) => {
     const [selectedTable, setSelectedTable] = React.useState<
         MasterSchemaEntry | undefined
     >(undefined);
-    React.useEffect(() => {
-        console.log(selectedTable?.zipped);
-    }, [selectedTable]);
+
+    const selectedTableRows = React.useMemo(() => {
+        return selectedTable
+            ? database.getTableRowsZipped(selectedTable.name)
+            : [];
+    }, [database, selectedTable]);
 
     return (
         <Grid container direction={"column"}>
@@ -78,18 +82,17 @@ const TableViewer: React.VFC<{ database: DatabaseFile }> = ({ database }) => {
                     ))}
                 </Select>
             </Grid>
-            {selectedTable && (
-                <Grid item>
-                    <DataGrid
-                        rows={selectedTable.zipped}
-                        columns={
-                            selectedTable.tableDefinition?.columns?.map(
-                                (c) => ({ key: c.name, name: `${c.name}` })
-                            ) ?? []
-                        }
-                    />
-                </Grid>
-            )}
+            <Grid item>
+                <DataGrid
+                    rows={selectedTableRows}
+                    columns={
+                        selectedTable?.tableDefinition?.columns?.map((c) => ({
+                            key: c.name,
+                            name: `${c.name}`,
+                        })) ?? []
+                    }
+                />
+            </Grid>
         </Grid>
     );
 };
@@ -98,25 +101,29 @@ const PageViewer: React.VFC<{ database: DatabaseFile }> = ({ database }) => {
     const [selectedPage, setSelectedPage] = React.useState<
         BTreePage | undefined
     >(undefined);
-    const pageKeys = Object.keys(database.pages);
+    const pageKeys = _.range(0, database.header.databaseFileSizeInPages);
 
     return (
         <Grid container direction={"column"}>
             <Grid item>
                 <Select
-                    onChange={(event) =>
-                        setSelectedPage(
-                            database.pages[
+                    onChange={(event) => {
+                        try {
+                            const pageNumber =
                                 typeof event.target.value === "number"
                                     ? event.target.value
-                                    : -1
-                            ]
-                        )
-                    }
+                                    : -1;
+                            const page = database.loadPage(pageNumber);
+                            setSelectedPage(page);
+                        } catch (err) {
+                            console.error("Failed to parse page", err);
+                            setSelectedPage(undefined);
+                        }
+                    }}
                 >
                     {pageKeys.map((pageNumber) => (
-                        <MenuItem value={parseInt(pageNumber)}>
-                            {parseInt(pageNumber) + 1}
+                        <MenuItem value={pageNumber + 1}>
+                            {pageNumber + 1}
                         </MenuItem>
                     ))}
                 </Select>
@@ -289,7 +296,6 @@ const RightPanel: React.FC<RightPanelProps> = ({ database, setDatabase }) => {
                                                 const db = new DatabaseFile(
                                                     result
                                                 );
-                                                db.readDatabase();
                                                 setDatabase(db);
                                             };
                                         }}

@@ -1,4 +1,3 @@
-import _ from "lodash";
 import {
     TableDefinition,
     TableDefinitionParser,
@@ -17,32 +16,61 @@ export type MasterSchemaEntry = {
     rootpage: number;
     sql?: string;
     tableDefinition?: TableDefinition;
-    rows: Row[];
-    zipped: any[];
 };
 
 export type MasterSchema = MasterSchemaEntry[];
 
 export class DatabaseFile extends File {
-    pages: Record<number, BTreePage> = {};
-    schema: MasterSchemaEntry[] = [];
+    header: DatabaseHeader;
+    schema: MasterSchemaEntry[];
 
-    getTableRows(pageNumber: number): Row[] {
-        const page = this.pages[pageNumber - 1];
+    constructor(bytes: ArrayBuffer | Buffer) {
+        super(bytes);
 
-        if (page?.type === "table_interior") {
-            return page.pointers.flatMap((p) =>
-                this.getTableRows(p.pageNumber)
+        this.header = DatabaseFileHeaderUtil.parseHeader(this);
+        this.schema = this.readMasterSchema();
+    }
+
+    getTableRowsInternal(pageNumber: number): Row[] {
+        const rootPage = this.loadPage(pageNumber);
+
+        if (rootPage?.type === "table_interior") {
+            return rootPage.pointers.flatMap((p) =>
+                this.getTableRowsInternal(p.pageNumber)
             );
         }
 
-        if (page?.type !== "table_leaf") {
+        if (rootPage?.type !== "table_leaf") {
             return [];
         }
 
-        return page.rows.map<Row>((recordRow) => {
+        return rootPage.rows.map<Row>((recordRow) => {
             return recordRow.records.map((r) => r.value);
         });
+    }
+
+    getTableRows(tableName: string): Row[] {
+        const rootPageNumber = this.schema.find(
+            (s) => s.tbl_name === tableName
+        )?.rootpage;
+
+        if (!rootPageNumber) {
+            return [];
+        }
+
+        return this.getTableRowsInternal(rootPageNumber);
+    }
+
+    getTableRowsZipped(tableName: string): any[] {
+        const definition = this.schema.find((s) => s.tbl_name === tableName);
+
+        if (!definition) {
+            return [];
+        }
+
+        return this.getTableRows(tableName).map((row) =>
+            DatabaseFile.zipSchemaAndResult(definition, row)
+        );
     }
 
     parseTableDefinition(sql?: string): TableDefinition | undefined {
@@ -55,20 +83,23 @@ export class DatabaseFile extends File {
     }
 
     findMasterSchemaPages(): BTreePage[] {
+        const rootPage = this.loadPage(1);
+        console.log(rootPage);
         if (
-            this.pages[0]?.type === "table_leaf" ||
-            this.pages[0]?.type === "index_leaf"
+            rootPage?.type === "table_leaf" ||
+            rootPage?.type === "index_leaf"
         ) {
-            return [this.pages[0]];
+            return [rootPage];
         }
 
-        const pages =
-            this.pages[0]?.pointers.map((p) => p.pageNumber - 1) ?? [];
-        return pages.map((p) => this.pages[p]);
+        return (rootPage ?? []).pointers.map((p) =>
+            this.loadPage(p.pageNumber)
+        );
     }
 
     readMasterSchema(): MasterSchemaEntry[] {
         const pages = this.findMasterSchemaPages();
+        console.log(pages);
 
         return pages.flatMap((page) => {
             if (page.type !== "table_leaf") {
@@ -83,6 +114,7 @@ export class DatabaseFile extends File {
                     sqlRecord,
                 ] = row.records;
 
+                console.log(row);
                 if (typeRecord.type !== "text") {
                     throw new Error(
                         `Expected 'type' to be of type 'text', but found ${typeRecord.type}`
@@ -119,10 +151,6 @@ export class DatabaseFile extends File {
 
                 const sql =
                     sqlRecord?.type === "text" ? sqlRecord.value : undefined;
-                const rows =
-                    rootPageRecord.value !== 0
-                        ? this.getTableRows(rootPageRecord.value)
-                        : [];
                 const tableDefinition = this.parseTableDefinition(sql);
                 return {
                     name: nameRecord.value,
@@ -135,33 +163,21 @@ export class DatabaseFile extends File {
                             ? "index"
                             : "unknown",
                     sql,
-                    rows,
                     tableDefinition,
-                    zipped: rows.map((row) =>
-                        row.reduce((state, cell, idx) => {
-                            const column = tableDefinition?.columns[idx];
-
-                            return {
-                                ...state,
-                                [column?.name ?? `unknown_${idx}`]: cell,
-                            };
-                        }, {})
-                    ),
                 };
             });
         });
     }
 
-    readDatabase() {
-        const header = DatabaseFileHeaderUtil.parseHeader(this);
+    static zipSchemaAndResult(schemaEntry: MasterSchemaEntry, row: Row): any {
+        return row.reduce((state, cell, idx) => {
+            const column = schemaEntry?.tableDefinition?.columns[idx];
 
-        // Load all pages into the class
-        _.range(0, header.databaseFileSizeInPages).forEach((pageIdx) => {
-            this.loadPage(header, pageIdx);
-        });
-
-        const masterSchema = this.readMasterSchema();
-        return (this.schema = masterSchema);
+            return {
+                ...state,
+                [column?.name ?? `unknown_${idx}`]: cell,
+            };
+        }, {});
     }
 
     getBytesOnPage(header: DatabaseHeader, pageNumber: number): Buffer {
@@ -176,20 +192,19 @@ export class DatabaseFile extends File {
         );
     }
 
-    loadPage(header: DatabaseHeader, pageNumber: number) {
-        const data = this.getBytesOnPage(header, pageNumber);
+    loadPage(pageNumber: number): BTreePage {
+        const data = this.getBytesOnPage(this.header, pageNumber - 1);
         const result = DatabaseFileBTreePageUtil.parseBTreePage(
             data,
-            pageNumber,
-            header,
-            (pageNumber) => this.getBytesOnPage(header, pageNumber - 1)
+            pageNumber - 1,
+            this.header,
+            (pageNumber) => this.getBytesOnPage(this.header, pageNumber - 1)
         );
 
         if (!result) {
-            console.info(`Page ${pageNumber} was not parsed as a BTree Page.`);
-            return;
+            throw new Error(`Failed to read page ${pageNumber}`);
         }
 
-        this.pages[pageNumber] = result;
+        return result;
     }
 }
