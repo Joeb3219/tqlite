@@ -94,8 +94,12 @@ const TableViewer: React.VFC<{ database: DatabaseFile }> = ({ database }) => {
                         selectedTable?.tableDefinition?.columns?.map((c) => ({
                             key: c.name,
                             name: `${c.name}`,
+                            resizable: true,
                         })) ?? []
                     }
+                    style={{
+                        height: "86vh",
+                    }}
                 />
             </Grid>
         </Grid>
@@ -138,7 +142,14 @@ const QueryViewer: React.VFC<{ database: DatabaseFile }> = ({ database }) => {
     return (
         <DataGrid
             rows={results}
-            columns={Object.keys(results[0]).map((r) => ({ key: r, name: r }))}
+            columns={Object.keys(results[0]).map((r) => ({
+                key: r,
+                name: r,
+                resizable: true,
+            }))}
+            style={{
+                height: "86vh",
+            }}
         />
     );
 };
@@ -199,7 +210,15 @@ const SchemaViewer: React.VFC<{ database: DatabaseFile }> = ({ database }) => {
         { key: "sql", name: "SQL" },
     ];
 
-    return <DataGrid rows={schema} columns={columns} />;
+    return (
+        <DataGrid
+            rows={schema}
+            columns={columns}
+            style={{
+                height: "86vh",
+            }}
+        />
+    );
 };
 
 interface BodyPanelProps {
