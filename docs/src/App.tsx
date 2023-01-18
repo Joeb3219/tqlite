@@ -1,4 +1,9 @@
-import { BTreePage, DatabaseFile, MasterSchemaEntry } from "@joeb3219/squeel";
+import {
+    BTreePage,
+    DatabaseFile,
+    MasterSchemaEntry,
+    QueryPlanner,
+} from "@joeb3219/squeel";
 import {
     Button,
     Divider,
@@ -97,6 +102,47 @@ const TableViewer: React.VFC<{ database: DatabaseFile }> = ({ database }) => {
     );
 };
 
+const QueryViewer: React.VFC<{ database: DatabaseFile }> = ({ database }) => {
+    const results = React.useMemo(() => {
+        const query = new QueryPlanner(database, {
+            from: {
+                type: "join",
+                leftTable: "mods",
+                rightTable: "knex_migrations",
+                on: {
+                    a: {
+                        type: "column",
+                        table: "mods",
+                        column: "isNew",
+                    },
+                    b: {
+                        type: "column",
+                        table: "knex_migrations",
+                        column: "batch",
+                    },
+                    comparator: "<",
+                },
+            },
+            what: [],
+            where: [],
+            sort: {
+                table: "mods",
+                column: "size",
+                direction: "ascending",
+            },
+        });
+
+        return query.execute();
+    }, [database]);
+
+    return (
+        <DataGrid
+            rows={results}
+            columns={Object.keys(results[0]).map((r) => ({ key: r, name: r }))}
+        />
+    );
+};
+
 const PageViewer: React.VFC<{ database: DatabaseFile }> = ({ database }) => {
     const [selectedPage, setSelectedPage] = React.useState<
         BTreePage | undefined
@@ -186,6 +232,7 @@ const BodyPanel: React.FC<BodyPanelProps> = (props) => {
                             <Tab label={"Schema"} />
                             <Tab label={"Tables"} />
                             <Tab label={"Pages"} />
+                            <Tab label={"Query"} />
                         </Tabs>
                     </Grid>
                     <Grid item>
@@ -198,6 +245,9 @@ const BodyPanel: React.FC<BodyPanelProps> = (props) => {
                             )}
                             {value === 2 && (
                                 <PageViewer database={props.database} />
+                            )}
+                            {value === 3 && (
+                                <QueryViewer database={props.database} />
                             )}
                         </>
                     </Grid>

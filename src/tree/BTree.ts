@@ -1,7 +1,11 @@
-import _ from "lodash";
+export type BTreeNode<T extends any> = {
+    data: T;
+    left?: BTreeNode<T>;
+    right?: BTreeNode<T>;
+};
 
 export class BTree<T extends any> {
-    nodes: Record<number, T> = {};
+    root?: BTreeNode<T>;
     constructor(private readonly sortKeys: (keyof T)[]) {}
 
     // Returns -1 if a is less than b, 0 if they're equal, or 1 if a is greater than b.
@@ -21,91 +25,76 @@ export class BTree<T extends any> {
     }
 
     addNode(node: T) {
-        let currentNodeIndex = 1;
-        while (true) {
-            const currentNode = this.getNode(currentNodeIndex);
+        // No root node, so we'll create one.
+        if (!this.root) {
+            this.root = {
+                data: node,
+            };
+            return;
+        }
 
-            console.log(currentNodeIndex, currentNode);
-            // Node is null, this is an insert.
-            if (!currentNode) {
-                this.setNode(currentNodeIndex, node);
-                return;
-            }
-
-            // Otherwise we keep moving through the tree to see if we can find our answer.
-            const compare = this.compare(node, currentNode);
+        let currentNode = this.root;
+        while (currentNode) {
+            const compare = this.compare(node, currentNode.data);
             if (compare < 0) {
-                currentNodeIndex = this.getChildIndex(currentNodeIndex, "left");
+                // We are less than, but there's already a lesser node -- navigate to it and we'll restart loop.
+                if (currentNode.left) {
+                    currentNode = currentNode.left;
+                } else {
+                    // This is the left node since there isn't one yet
+                    currentNode.left = {
+                        data: node,
+                    };
+
+                    // We've inserted -- safe to return.
+                    return;
+                }
             } else {
-                currentNodeIndex = this.getChildIndex(
-                    currentNodeIndex,
-                    "right"
-                );
+                // We are greater than or equal to, but there's already a gte node -- navigate to it and we'll restart loop.
+                if (currentNode.right) {
+                    currentNode = currentNode.right;
+                } else {
+                    // This is the right node since there isn't one yet
+                    currentNode.right = {
+                        data: node,
+                    };
+
+                    // We've inserted -- safe to return.
+                    return;
+                }
             }
         }
     }
 
-    setNode(idx: number, node: T) {
-        this.nodes[idx - 1] = node;
-    }
-
-    getNode(idx: number): T | undefined {
-        return this.nodes[idx - 1];
-    }
-
-    getRootIndex(): number {
-        return 1;
-    }
-
-    getChildIndex(idx: number, variant: "left" | "right"): number {
-        return variant === "left" ? 2 * idx : 2 * idx + 1;
-    }
-
-    getParentIndex(idx: number): number {
-        return Math.floor(idx / 2);
-    }
-
-    private sortInternal(idx: number, isAscending: boolean): T[] {
-        const left = this.getNode(this.getChildIndex(idx, "left"));
-        const right = this.getNode(this.getChildIndex(idx, "right"));
-        const node = this.getNode(idx);
+    private sortInternal(root: BTreeNode<T>, isAscending: boolean): T[] {
+        if (!root) {
+            return [];
+        }
 
         if (isAscending) {
-            return _.flatten([
-                ...(left
-                    ? this.sortInternal(
-                          this.getChildIndex(idx, "left"),
-                          isAscending
-                      )
+            return [
+                ...(!!root.left
+                    ? this.sortInternal(root.left, isAscending)
                     : []),
-                node ?? [],
-                ...(right
-                    ? this.sortInternal(
-                          this.getChildIndex(idx, "right"),
-                          isAscending
-                      )
+                root.data,
+                ...(!!root.right
+                    ? this.sortInternal(root.right, isAscending)
                     : []),
-            ]);
+            ];
         }
 
-        return _.flatten([
-            ...(right
-                ? this.sortInternal(
-                      this.getChildIndex(idx, "right"),
-                      isAscending
-                  )
-                : []),
-            node ?? [],
-            ...(left
-                ? this.sortInternal(
-                      this.getChildIndex(idx, "left"),
-                      isAscending
-                  )
-                : []),
-        ]);
+        return [
+            ...(!!root.right ? this.sortInternal(root.right, isAscending) : []),
+            root.data,
+            ...(!!root.left ? this.sortInternal(root.left, isAscending) : []),
+        ];
     }
 
     sort(isAscending: boolean = true): T[] {
-        return this.sortInternal(0, isAscending);
+        if (!this.root) {
+            return [];
+        }
+
+        return this.sortInternal(this.root, isAscending);
     }
 }

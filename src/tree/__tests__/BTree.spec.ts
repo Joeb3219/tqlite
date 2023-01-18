@@ -11,39 +11,53 @@ describe("BTree", () => {
         btree.addNode({ a: 99, b: "hello 5" });
         btree.addNode({ a: -4, b: "hello 6" });
         btree.addNode({ a: -5, b: "hello 7" });
-        expect(btree.nodes).toMatchInlineSnapshot(`
+        expect(btree.root).toMatchInlineSnapshot(`
             {
-              "0": {
+              "data": {
                 "a": 1,
                 "b": "hello",
               },
-              "1": {
-                "a": -50,
-                "b": "hello 3",
+              "left": {
+                "data": {
+                  "a": -50,
+                  "b": "hello 3",
+                },
+                "right": {
+                  "data": {
+                    "a": -4,
+                    "b": "hello 6",
+                  },
+                  "left": {
+                    "data": {
+                      "a": -5,
+                      "b": "hello 7",
+                    },
+                  },
+                },
               },
-              "13": {
-                "a": 55,
-                "b": "hello 4",
-              },
-              "2": {
-                "a": 10,
-                "b": "hello 1",
-              },
-              "28": {
-                "a": 99,
-                "b": "hello 5",
-              },
-              "4": {
-                "a": -4,
-                "b": "hello 6",
-              },
-              "6": {
-                "a": 1100,
-                "b": "hello 2",
-              },
-              "9": {
-                "a": -5,
-                "b": "hello 7",
+              "right": {
+                "data": {
+                  "a": 10,
+                  "b": "hello 1",
+                },
+                "right": {
+                  "data": {
+                    "a": 1100,
+                    "b": "hello 2",
+                  },
+                  "left": {
+                    "data": {
+                      "a": 55,
+                      "b": "hello 4",
+                    },
+                    "right": {
+                      "data": {
+                        "a": 99,
+                        "b": "hello 5",
+                      },
+                    },
+                  },
+                },
               },
             }
         `);
@@ -133,39 +147,53 @@ describe("BTree", () => {
         btree.addNode({ a: 99, b: "hello 5" });
         btree.addNode({ a: -4, b: "hello 6" });
         btree.addNode({ a: -5, b: "hello 7" });
-        expect(btree.nodes).toMatchInlineSnapshot(`
+        expect(btree.root).toMatchInlineSnapshot(`
             {
-              "0": {
+              "data": {
                 "a": 1,
                 "b": "hello",
               },
-              "126": {
-                "a": -4,
-                "b": "hello 6",
-              },
-              "14": {
-                "a": -50,
-                "b": "hello 3",
-              },
-              "2": {
-                "a": 10,
-                "b": "hello 1",
-              },
-              "254": {
-                "a": -5,
-                "b": "hello 7",
-              },
-              "30": {
-                "a": 55,
-                "b": "hello 4",
-              },
-              "6": {
-                "a": 1100,
-                "b": "hello 2",
-              },
-              "62": {
-                "a": 99,
-                "b": "hello 5",
+              "right": {
+                "data": {
+                  "a": 10,
+                  "b": "hello 1",
+                },
+                "right": {
+                  "data": {
+                    "a": 1100,
+                    "b": "hello 2",
+                  },
+                  "right": {
+                    "data": {
+                      "a": -50,
+                      "b": "hello 3",
+                    },
+                    "right": {
+                      "data": {
+                        "a": 55,
+                        "b": "hello 4",
+                      },
+                      "right": {
+                        "data": {
+                          "a": 99,
+                          "b": "hello 5",
+                        },
+                        "right": {
+                          "data": {
+                            "a": -4,
+                            "b": "hello 6",
+                          },
+                          "right": {
+                            "data": {
+                              "a": -5,
+                              "b": "hello 7",
+                            },
+                          },
+                        },
+                      },
+                    },
+                  },
+                },
               },
             }
         `);
