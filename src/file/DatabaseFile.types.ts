@@ -147,9 +147,8 @@ export type BTreePage =
           indices: BTreeIndexData[];
       }
     | {
-        type: 'index_interior';
-        
-    };
+          type: "index_interior";
+      };
 
 export type BTreePageOfType<T extends BTreePage["type"]> = Extract<
     BTreePage,

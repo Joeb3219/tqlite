@@ -1,4 +1,7 @@
-import { IndexDefinition, IndexDefinitionParser } from "../parser/IndexDefinition.parser";
+import {
+    IndexDefinition,
+    IndexDefinitionParser,
+} from "../parser/IndexDefinition.parser";
 import {
     TableDefinition,
     TableDefinitionParser,
@@ -43,10 +46,10 @@ export class DatabaseFile extends File {
         }
 
         if (rootPage?.type === "index_leaf") {
-            return rootPage.indices.map(i => ([i.records[0].value, i.records[1].value]))
+            return rootPage.indices.map((i) => i.records.map((r) => r.value));
         }
 
-        if (rootPage?.type === 'index_interior') {
+        if (rootPage?.type === "index_interior") {
             return [];
         }
 
@@ -88,7 +91,10 @@ export class DatabaseFile extends File {
         }
 
         const rows = this.getTableRowsInternal(definition.rootpage);
-        return rows.map(row =>             DatabaseFile.zipSchemaAndResult(definition, row)        )
+        console.log(indexName + " rows", rows);
+        return rows.map((row) =>
+            DatabaseFile.zipSchemaAndResult(definition, row)
+        );
     }
 
     parseTableDefinition(sql?: string): TableDefinition | undefined {
@@ -98,9 +104,9 @@ export class DatabaseFile extends File {
 
         try {
             const tableParser = new TableDefinitionParser(sql);
-            return tableParser.tableDefinition;    
-        } catch(err){
-            console.warn('Failed to parse table definition', err);
+            return tableParser.tableDefinition;
+        } catch (err) {
+            console.warn("Failed to parse table definition", err);
             return undefined;
         }
     }
@@ -112,9 +118,9 @@ export class DatabaseFile extends File {
 
         try {
             const tableParser = new IndexDefinitionParser(sql);
-            return tableParser.indexDefinition;    
-        } catch(err){
-            console.warn('Failed to parse index definition', err);
+            return tableParser.indexDefinition;
+        } catch (err) {
+            console.warn("Failed to parse index definition", err);
             return undefined;
         }
     }
@@ -125,7 +131,7 @@ export class DatabaseFile extends File {
         if (
             rootPage?.type === "table_leaf" ||
             rootPage?.type === "index_leaf" ||
-            rootPage?.type === 'index_interior'
+            rootPage?.type === "index_interior"
         ) {
             return [rootPage];
         }
@@ -187,11 +193,12 @@ export class DatabaseFile extends File {
                     );
                 }
 
-                const type: MasterSchemaEntry['type'] =  typeRecord.value === "table"
-                ? "table"
-                : typeRecord.value === "index"
-                ? "index"
-                : "unknown";
+                const type: MasterSchemaEntry["type"] =
+                    typeRecord.value === "table"
+                        ? "table"
+                        : typeRecord.value === "index"
+                        ? "index"
+                        : "unknown";
                 const sql =
                     sqlRecord?.type === "text" ? sqlRecord.value : undefined;
                 return {
@@ -199,9 +206,20 @@ export class DatabaseFile extends File {
                     sql,
                     name: nameRecord.value,
                     rootpage: rootPageRecord.value,
-                    tbl_name: tableNameRecord.value,                       
-                    tableDefinition: type === 'table' ? this.parseTableDefinition(sql) : undefined,
-                    indexDefinition: type === 'index' ? (this.parseIndexDefinition(sql) ?? { unique: false, tableName: tableNameRecord.value, indexName: nameRecord.value, columns: ['id', 'key'] }) : undefined
+                    tbl_name: tableNameRecord.value,
+                    tableDefinition:
+                        type === "table"
+                            ? this.parseTableDefinition(sql)
+                            : undefined,
+                    indexDefinition:
+                        type === "index"
+                            ? this.parseIndexDefinition(sql) ?? {
+                                  unique: false,
+                                  tableName: tableNameRecord.value,
+                                  indexName: nameRecord.value,
+                                  columns: ["key", "id"],
+                              }
+                            : undefined,
                 };
             });
         });
@@ -209,7 +227,9 @@ export class DatabaseFile extends File {
 
     static zipSchemaAndResult(schemaEntry: MasterSchemaEntry, row: Row): any {
         return row.reduce((state, cell, idx) => {
-            const column = schemaEntry?.tableDefinition ? schemaEntry.tableDefinition?.columns[idx]?.name : schemaEntry?.indexDefinition?.columns[idx]
+            const column = schemaEntry?.tableDefinition
+                ? schemaEntry.tableDefinition?.columns[idx]?.name
+                : schemaEntry?.indexDefinition?.columns[idx];
 
             return {
                 ...state,

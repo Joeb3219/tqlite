@@ -145,7 +145,10 @@ const IndexViewer: React.VFC<{ database: DatabaseFile }> = ({ database }) => {
                 <DataGrid
                     rows={selectedIndexRows}
                     columns={
-                        selectedIndex?.indexDefinition?.columns.map(c => ({ key: c, name: c })) ?? []
+                        selectedIndex?.indexDefinition?.columns.map((c) => ({
+                            key: c,
+                            name: c,
+                        })) ?? []
                     }
                     style={{
                         height: "86vh",
@@ -313,7 +316,9 @@ const BodyPanel: React.FC<BodyPanelProps> = (props) => {
                             {value === 1 && (
                                 <TableViewer database={props.database} />
                             )}
-                            {value === 2 && <IndexViewer database={props.database}/>}
+                            {value === 2 && (
+                                <IndexViewer database={props.database} />
+                            )}
                             {value === 3 && (
                                 <PageViewer database={props.database} />
                             )}

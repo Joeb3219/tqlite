@@ -1,8 +1,8 @@
 type TokenType =
     | "CREATE"
     | "INDEX"
-    | 'UNIQUE'
-    | 'ON'
+    | "UNIQUE"
+    | "ON"
     | "BACKTICK"
     | "("
     | ")"
@@ -195,7 +195,7 @@ export class IndexDefinitionParser {
         this.indexDefinition = undefined;
 
         this.optionallyConsumeOfType("CREATE");
-        const uniqueToken = this.optionallyConsumeOfType('UNIQUE');
+        const uniqueToken = this.optionallyConsumeOfType("UNIQUE");
         this.consumeOfType("INDEX");
         this.optionallyConsumeOfType("BACKTICK");
         const indexName = this.consumeOfType("identifier");
@@ -215,5 +215,9 @@ export class IndexDefinitionParser {
         this.optionallyConsumeOfType("BACKTICK");
         this.consumeOfType("(");
         this.parseColumnDefinitions();
+
+        if (!this.indexDefinition.columns.includes("id")) {
+            this.indexDefinition.columns.push("id");
+        }
     }
 }
