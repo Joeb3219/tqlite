@@ -274,6 +274,16 @@ export class DatabaseFileBTreePageUtil {
         );
     }
 
+    static parseBTreeIndexInterior(
+        bytes: Buffer,
+        dbHeader: DatabaseHeader,
+        pageHeader: BTreeHeader
+    ): BTreePageOfType<"index_interior"> {
+        return {
+            type: 'index_interior'
+        }
+    }
+
     static parseBTreeIndexLeaf(
         bytes: Buffer,
         dbHeader: DatabaseHeader,
@@ -326,6 +336,8 @@ export class DatabaseFileBTreePageUtil {
                 records: this.parseRecord(data, dbHeader),
             };
         });
+
+        console.log('indices', indices);
 
         return {
             type: "index_leaf",
@@ -497,7 +509,7 @@ export class DatabaseFileBTreePageUtil {
                 case "index_leaf":
                     return this.parseBTreeIndexLeaf(bytes, dbHeader, header);
                 case "index_interior":
-                    return undefined;
+                    return this.parseBTreeIndexInterior(bytes, dbHeader, header);
             }
         } catch (err) {
             console.error(`Error on page ${pageNumber}`, err);

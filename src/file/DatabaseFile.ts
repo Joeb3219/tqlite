@@ -1,3 +1,4 @@
+import { IndexDefinition, IndexDefinitionParser } from "../parser/IndexDefinition.parser";
 import {
     TableDefinition,
     TableDefinitionParser,
@@ -16,6 +17,7 @@ export type MasterSchemaEntry = {
     rootpage: number;
     sql?: string;
     tableDefinition?: TableDefinition;
+    indexDefinition?: IndexDefinition;
 };
 
 export type MasterSchema = MasterSchemaEntry[];
@@ -40,7 +42,11 @@ export class DatabaseFile extends File {
             );
         }
 
-        if (rootPage?.type !== "table_leaf") {
+        if (rootPage?.type === "index_leaf") {
+            return rootPage.indices.map(i => ([i.records[0].value, i.records[1].value]))
+        }
+
+        if (rootPage?.type === 'index_interior') {
             return [];
         }
 
@@ -73,13 +79,44 @@ export class DatabaseFile extends File {
         );
     }
 
+    // TODO: clean this up, it's mostly in for debug right now.
+    getIndexRowsZipped(indexName: string): any[] {
+        const definition = this.schema.find((s) => s.name === indexName);
+
+        if (!definition) {
+            return [];
+        }
+
+        const rows = this.getTableRowsInternal(definition.rootpage);
+        return rows.map(row =>             DatabaseFile.zipSchemaAndResult(definition, row)        )
+    }
+
     parseTableDefinition(sql?: string): TableDefinition | undefined {
         if (!sql) {
             return undefined;
         }
 
-        const tableParser = new TableDefinitionParser(sql);
-        return tableParser.tableDefinition;
+        try {
+            const tableParser = new TableDefinitionParser(sql);
+            return tableParser.tableDefinition;    
+        } catch(err){
+            console.warn('Failed to parse table definition', err);
+            return undefined;
+        }
+    }
+
+    parseIndexDefinition(sql?: string): IndexDefinition | undefined {
+        if (!sql) {
+            return undefined;
+        }
+
+        try {
+            const tableParser = new IndexDefinitionParser(sql);
+            return tableParser.indexDefinition;    
+        } catch(err){
+            console.warn('Failed to parse index definition', err);
+            return undefined;
+        }
     }
 
     findMasterSchemaPages(): BTreePage[] {
@@ -87,7 +124,8 @@ export class DatabaseFile extends File {
         console.log(rootPage);
         if (
             rootPage?.type === "table_leaf" ||
-            rootPage?.type === "index_leaf"
+            rootPage?.type === "index_leaf" ||
+            rootPage?.type === 'index_interior'
         ) {
             return [rootPage];
         }
@@ -149,21 +187,21 @@ export class DatabaseFile extends File {
                     );
                 }
 
+                const type: MasterSchemaEntry['type'] =  typeRecord.value === "table"
+                ? "table"
+                : typeRecord.value === "index"
+                ? "index"
+                : "unknown";
                 const sql =
                     sqlRecord?.type === "text" ? sqlRecord.value : undefined;
-                const tableDefinition = this.parseTableDefinition(sql);
                 return {
+                    type,
+                    sql,
                     name: nameRecord.value,
                     rootpage: rootPageRecord.value,
-                    tbl_name: tableNameRecord.value,
-                    type:
-                        typeRecord.value === "table"
-                            ? "table"
-                            : typeRecord.value === "index"
-                            ? "index"
-                            : "unknown",
-                    sql,
-                    tableDefinition,
+                    tbl_name: tableNameRecord.value,                       
+                    tableDefinition: type === 'table' ? this.parseTableDefinition(sql) : undefined,
+                    indexDefinition: type === 'index' ? (this.parseIndexDefinition(sql) ?? { unique: false, tableName: tableNameRecord.value, indexName: nameRecord.value, columns: ['id', 'key'] }) : undefined
                 };
             });
         });
@@ -171,11 +209,11 @@ export class DatabaseFile extends File {
 
     static zipSchemaAndResult(schemaEntry: MasterSchemaEntry, row: Row): any {
         return row.reduce((state, cell, idx) => {
-            const column = schemaEntry?.tableDefinition?.columns[idx];
+            const column = schemaEntry?.tableDefinition ? schemaEntry.tableDefinition?.columns[idx]?.name : schemaEntry?.indexDefinition?.columns[idx]
 
             return {
                 ...state,
-                [column?.name ?? `unknown_${idx}`]: cell,
+                [column ?? `unknown_${idx}`]: cell,
             };
         }, {});
     }

@@ -106,6 +106,56 @@ const TableViewer: React.VFC<{ database: DatabaseFile }> = ({ database }) => {
     );
 };
 
+const IndexViewer: React.VFC<{ database: DatabaseFile }> = ({ database }) => {
+    const indices = React.useMemo(() => {
+        const schema = database.readMasterSchema();
+        return schema.filter((s) => s.type === "index");
+    }, [database]);
+
+    const [selectedIndex, setSelectedIndex] = React.useState<
+        MasterSchemaEntry | undefined
+    >(undefined);
+
+    const selectedIndexRows = React.useMemo(() => {
+        return selectedIndex
+            ? database.getIndexRowsZipped(selectedIndex.name)
+            : [];
+    }, [database, selectedIndex]);
+
+    return (
+        <Grid container direction={"column"}>
+            <Grid item>
+                <Select
+                    onChange={(event) =>
+                        setSelectedIndex(
+                            indices[
+                                typeof event.target.value === "number"
+                                    ? event.target.value
+                                    : -1
+                            ]
+                        )
+                    }
+                >
+                    {indices.map((index, idx) => (
+                        <MenuItem value={idx}>{index.name}</MenuItem>
+                    ))}
+                </Select>
+            </Grid>
+            <Grid item>
+                <DataGrid
+                    rows={selectedIndexRows}
+                    columns={
+                        selectedIndex?.indexDefinition?.columns.map(c => ({ key: c, name: c })) ?? []
+                    }
+                    style={{
+                        height: "86vh",
+                    }}
+                />
+            </Grid>
+        </Grid>
+    );
+};
+
 const QueryViewer: React.VFC<{ database: DatabaseFile }> = ({ database }) => {
     const results = React.useMemo(() => {
         const query = new QueryPlanner(database, {
@@ -250,6 +300,7 @@ const BodyPanel: React.FC<BodyPanelProps> = (props) => {
                         >
                             <Tab label={"Schema"} />
                             <Tab label={"Tables"} />
+                            <Tab label={"Views"} />
                             <Tab label={"Pages"} />
                             <Tab label={"Query"} />
                         </Tabs>
@@ -262,10 +313,11 @@ const BodyPanel: React.FC<BodyPanelProps> = (props) => {
                             {value === 1 && (
                                 <TableViewer database={props.database} />
                             )}
-                            {value === 2 && (
+                            {value === 2 && <IndexViewer database={props.database}/>}
+                            {value === 3 && (
                                 <PageViewer database={props.database} />
                             )}
-                            {value === 3 && (
+                            {value === 4 && (
                                 <QueryViewer database={props.database} />
                             )}
                         </>
