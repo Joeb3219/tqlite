@@ -65,8 +65,8 @@ export class QueryPlanner {
     }
 
     getJoinedRows(join: Join): any[] {
-        const leftTable = this.database.getTableRowsZipped(join.leftTable);
-        const rightTable = this.database.getTableRowsZipped(join.rightTable);
+        const leftTable = this.database.getTableRows(join.leftTable, this.query.where);
+        const rightTable = this.database.getTableRows(join.rightTable, this.query.where);
 
         return leftTable.flatMap((left) => {
             const matches = rightTable.filter((right) => {

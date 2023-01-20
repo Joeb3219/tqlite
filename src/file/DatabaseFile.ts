@@ -6,6 +6,7 @@ import {
     TableDefinition,
     TableDefinitionParser,
 } from "../parser/TableDefinition.parser";
+import { Where } from "../query/QueryPlanner";
 import { BTreePage, DatabaseHeader } from "./DatabaseFile.types";
 import { DatabaseFileBTreePageUtil } from "./DatabaseFileBTreePage";
 import { DatabaseFileHeaderUtil } from "./DatabaseFileHeader";
@@ -36,12 +37,13 @@ export class DatabaseFile extends File {
         this.schema = this.readMasterSchema();
     }
 
-    getTableRowsInternal(pageNumber: number): Row[] {
-        const rootPage = this.loadPage(pageNumber);
+    // TODO: implement where for indices
+    getTableRowsInternal(pageNumber: number, columns: string[], where?: Where[]): Row[] {
+        const rootPage = this.loadPage(pageNumber, columns);
 
         if (rootPage?.type === "table_interior") {
             return rootPage.pointers.flatMap((p) =>
-                this.getTableRowsInternal(p.pageNumber)
+                this.getTableRowsInternal(p.pageNumber, columns, where)
             );
         }
 
@@ -51,7 +53,7 @@ export class DatabaseFile extends File {
 
         if (rootPage?.type === "index_interior") {
             return rootPage.indices.flatMap((p) =>
-                this.getTableRowsInternal(p.pageNumber)
+                this.getTableRowsInternal(p.pageNumber, columns, where)
             );
         }
 
@@ -60,42 +62,17 @@ export class DatabaseFile extends File {
         });
     }
 
-    getTableRows(tableName: string): Row[] {
-        const rootPageNumber = this.schema.find(
+    getTableRows(tableName: string, where?: Where[]): Row[] {
+        const entry = this.schema.find(
             (s) => s.tbl_name === tableName
-        )?.rootpage;
-
-        if (!rootPageNumber) {
-            return [];
-        }
-
-        return this.getTableRowsInternal(rootPageNumber);
-    }
-
-    getTableRowsZipped(tableName: string): any[] {
-        const definition = this.schema.find((s) => s.tbl_name === tableName);
-
-        if (!definition) {
-            return [];
-        }
-
-        return this.getTableRows(tableName).map((row) =>
-            DatabaseFile.zipSchemaAndResult(definition, row)
         );
-    }
 
-    // TODO: clean this up, it's mostly in for debug right now.
-    getIndexRowsZipped(indexName: string): any[] {
-        const definition = this.schema.find((s) => s.name === indexName);
-
-        if (!definition) {
+        if (!entry?.rootpage) {
             return [];
         }
 
-        const rows = this.getTableRowsInternal(definition.rootpage);
-        return rows.map((row) =>
-            DatabaseFile.zipSchemaAndResult(definition, row)
-        );
+        const columns: string[] = entry.tableDefinition?.columns?.map(c => c.name) ?? entry.indexDefinition?.columns ?? [];
+        return this.getTableRowsInternal(entry.rootpage, columns, where);
     }
 
     parseTableDefinition(sql?: string): TableDefinition | undefined {
@@ -225,19 +202,6 @@ export class DatabaseFile extends File {
         });
     }
 
-    static zipSchemaAndResult(schemaEntry: MasterSchemaEntry, row: Row): any {
-        return row.reduce((state, cell, idx) => {
-            const column = schemaEntry?.tableDefinition
-                ? schemaEntry.tableDefinition?.columns[idx]?.name
-                : schemaEntry?.indexDefinition?.columns[idx];
-
-            return {
-                ...state,
-                [column ?? `unknown_${idx}`]: cell,
-            };
-        }, {});
-    }
-
     getBytesOnPage(header: DatabaseHeader, pageNumber: number): Buffer {
         // If all pages are of size N, we can easily compute the starting address.
         const realStartIdx = header.pageSizeBytes * pageNumber;
@@ -250,13 +214,14 @@ export class DatabaseFile extends File {
         );
     }
 
-    loadPage(pageNumber: number): BTreePage {
+    loadPage(pageNumber: number, columns: string[]): BTreePage {
         const data = this.getBytesOnPage(this.header, pageNumber - 1);
         const result = DatabaseFileBTreePageUtil.parseBTreePage(
             data,
             pageNumber - 1,
             this.header,
-            (pageNumber) => this.getBytesOnPage(this.header, pageNumber - 1)
+            (pageNumber) => this.getBytesOnPage(this.header, pageNumber - 1),
+            columns
         );
 
         if (!result) {

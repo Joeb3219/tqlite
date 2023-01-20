@@ -124,6 +124,7 @@ export type BTreeRow = {
     payloadSize: number;
     storedSize: number;
     records: BTreeRecord[];
+    cells: any;
 };
 
 export type BTreeIndexInteriorData = {
@@ -132,6 +133,7 @@ export type BTreeIndexInteriorData = {
     payloadSize: number;
     storedSize: number;
     records: BTreeRecord[];
+    cells: any;
 };
 
 export type BTreeIndexData = {
@@ -139,6 +141,7 @@ export type BTreeIndexData = {
     storedSize: number;
     overflowPage: number | undefined;
     records: BTreeRecord[];
+    cells: any;
 };
 
 export type BTreePage =

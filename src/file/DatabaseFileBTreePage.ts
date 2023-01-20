@@ -282,7 +282,8 @@ export class DatabaseFileBTreePageUtil {
         bytes: Buffer,
         dbHeader: DatabaseHeader,
         pageHeader: BTreeHeader,
-        requestAdditionalPage: RequestAdditionalPageFunction
+        requestAdditionalPage: RequestAdditionalPageFunction,
+        columns: string[]
     ): BTreePageOfType<"index_interior"> {
         if (pageHeader.type !== "index_interior") {
             throw new Error("Page is not an index interior");
@@ -338,12 +339,14 @@ export class DatabaseFileBTreePageUtil {
                 ? Buffer.from([...storedData, ...overflowPageData])
                 : storedData;
 
+            const records = this.parseRecord(data, dbHeader);
             return {
                 payloadSize,
                 storedSize,
                 pageNumber,
                 overflowPage,
-                records: this.parseRecord(data, dbHeader),
+                records,
+                cells: DatabaseFileBTreePageUtil.zipRecordsAndColumns(records, columns)
             };
         });
 
@@ -356,6 +359,7 @@ export class DatabaseFileBTreePageUtil {
                     records: [],
                     pageNumber: pageHeader.rightmostPointer,
                     overflowPage: undefined,
+                    cells: {}
                 },
             ],
             type: "index_interior",
@@ -366,7 +370,8 @@ export class DatabaseFileBTreePageUtil {
         bytes: Buffer,
         dbHeader: DatabaseHeader,
         pageHeader: BTreeHeader,
-        requestAdditionalPage: RequestAdditionalPageFunction
+        requestAdditionalPage: RequestAdditionalPageFunction,
+        columns: string[]
     ): BTreePageOfType<"index_leaf"> {
         if (pageHeader.type !== "index_leaf") {
             throw new Error("Page is not an index leaf");
@@ -416,11 +421,13 @@ export class DatabaseFileBTreePageUtil {
                 ? Buffer.from([...storedData, ...overflowPageData])
                 : storedData;
 
+            const records = this.parseRecord(data, dbHeader);
             return {
                 payloadSize,
                 storedSize,
                 overflowPage,
-                records: this.parseRecord(data, dbHeader),
+                records,
+                cells: DatabaseFileBTreePageUtil.zipRecordsAndColumns(records, columns)
             };
         });
 
@@ -461,7 +468,8 @@ export class DatabaseFileBTreePageUtil {
         bytes: Buffer,
         dbHeader: DatabaseHeader,
         pageHeader: BTreeHeader,
-        requestAdditionalPage: RequestAdditionalPageFunction
+        requestAdditionalPage: RequestAdditionalPageFunction,
+        columns: string[]
     ): BTreePageOfType<"table_leaf"> {
         if (pageHeader.type !== "table_leaf") {
             throw new Error("Page is not a table leaf");
@@ -520,16 +528,29 @@ export class DatabaseFileBTreePageUtil {
                 ? Buffer.from([...storedData, ...overflowPageData])
                 : storedData;
 
+                const records = this.parseRecord(data, dbHeader);
             return {
                 payloadSize,
                 storedSize,
                 rowId,
                 overflowPage,
-                records: this.parseRecord(data, dbHeader),
+                records,
+                cells: DatabaseFileBTreePageUtil.zipRecordsAndColumns(records, columns)
             };
         });
 
         return { type: "table_leaf", rows };
+    }
+
+    static zipRecordsAndColumns(records: BTreeRecord[], columns: string[]): any {
+        return records.reduce((state, cell, idx) => {
+            const column = columns[idx];
+
+            return {
+                ...state,
+                [column ?? `unknown_${idx}`]: cell,
+            };
+        }, {});
     }
 
     static parseBTreeTableInterior(
@@ -565,7 +586,8 @@ export class DatabaseFileBTreePageUtil {
         bytes: Buffer,
         pageNumber: number,
         dbHeader: DatabaseHeader,
-        requestAdditionalPage: RequestAdditionalPageFunction
+        requestAdditionalPage: RequestAdditionalPageFunction,
+        columns: string[]
     ): BTreePage | undefined {
         try {
             const bytesWithoutPageZeroHeader =
@@ -591,14 +613,16 @@ export class DatabaseFileBTreePageUtil {
                         bytes,
                         dbHeader,
                         header,
-                        requestAdditionalPage
+                        requestAdditionalPage,
+                        columns
                     );
                 case "index_leaf":
                     return this.parseBTreeIndexLeaf(
                         bytes,
                         dbHeader,
                         header,
-                        requestAdditionalPage
+                        requestAdditionalPage,
+                        columns
                     );
                 case "index_interior":
                     return this.parseBTreeIndexInterior(

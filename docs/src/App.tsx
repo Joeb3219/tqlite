@@ -64,7 +64,7 @@ const TableViewer: React.VFC<{ database: DatabaseFile }> = ({ database }) => {
 
     const selectedTableRows = React.useMemo(() => {
         return selectedTable
-            ? database.getTableRowsZipped(selectedTable.name)
+            ? database.getTableRows(selectedTable.name)
             : [];
     }, [database, selectedTable]);
 
