@@ -50,10 +50,10 @@ export type BTreeHeaderCommon = {
 
 export type BTreeHeader =
     | ({
-          type: "index_interior" | "index_leaf" | "table_leaf";
+          type: "index_leaf" | "table_leaf";
       } & BTreeHeaderCommon)
     | ({
-          type: "table_interior";
+          type: "index_interior" | "table_interior";
           rightmostPointer: number;
       } & BTreeHeaderCommon);
 
@@ -126,6 +126,14 @@ export type BTreeRow = {
     records: BTreeRecord[];
 };
 
+export type BTreeIndexInteriorData = {
+    pageNumber: number;
+    overflowPage: number | undefined;
+    payloadSize: number;
+    storedSize: number;
+    records: BTreeRecord[];
+};
+
 export type BTreeIndexData = {
     payloadSize: number;
     storedSize: number;
@@ -148,6 +156,7 @@ export type BTreePage =
       }
     | {
           type: "index_interior";
+          indices: BTreeIndexInteriorData[];
       };
 
 export type BTreePageOfType<T extends BTreePage["type"]> = Extract<

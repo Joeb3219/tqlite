@@ -50,7 +50,9 @@ export class DatabaseFile extends File {
         }
 
         if (rootPage?.type === "index_interior") {
-            return [];
+            return rootPage.indices.flatMap((p) =>
+                this.getTableRowsInternal(p.pageNumber)
+            );
         }
 
         return rootPage.rows.map<Row>((recordRow) => {
@@ -91,7 +93,6 @@ export class DatabaseFile extends File {
         }
 
         const rows = this.getTableRowsInternal(definition.rootpage);
-        console.log(indexName + " rows", rows);
         return rows.map((row) =>
             DatabaseFile.zipSchemaAndResult(definition, row)
         );
@@ -127,7 +128,6 @@ export class DatabaseFile extends File {
 
     findMasterSchemaPages(): BTreePage[] {
         const rootPage = this.loadPage(1);
-        console.log(rootPage);
         if (
             rootPage?.type === "table_leaf" ||
             rootPage?.type === "index_leaf" ||
@@ -136,7 +136,7 @@ export class DatabaseFile extends File {
             return [rootPage];
         }
 
-        return (rootPage ?? []).pointers.map((p) =>
+        return (rootPage?.pointers ?? []).map((p) =>
             this.loadPage(p.pageNumber)
         );
     }

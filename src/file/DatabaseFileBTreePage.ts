@@ -3,6 +3,7 @@ import {
     BTreeHeader,
     BTreeHeaderCommon,
     BTreeIndexData,
+    BTreeIndexInteriorData,
     BTreePage,
     BTreePageOfType,
     BTreePageType,
@@ -214,9 +215,9 @@ export class DatabaseFileBTreePageUtil {
             numberFragmentedFreeBytesInCellContent: bytes.readUInt8(7),
         };
 
-        if (pageType === "table_interior") {
+        if (pageType === "table_interior" || pageType === "index_interior") {
             return {
-                type: "table_interior",
+                type: pageType,
                 ...commonData,
                 rightmostPointer: bytes.readUInt32BE(8),
             };
@@ -264,7 +265,10 @@ export class DatabaseFileBTreePageUtil {
     static getCellOffsets(bytes: Buffer, pageHeader: BTreeHeader): number[] {
         const startOffset =
             (pageHeader.pageNumber === 0 ? 100 : 0) +
-            (pageHeader.type === "table_interior" ? 12 : 8);
+            (pageHeader.type === "table_interior" ||
+            pageHeader.type === "index_interior"
+                ? 12
+                : 8);
         const cellPointerBytes = bytes.subarray(
             startOffset,
             startOffset + pageHeader.numberCells * 2
@@ -277,9 +281,83 @@ export class DatabaseFileBTreePageUtil {
     static parseBTreeIndexInterior(
         bytes: Buffer,
         dbHeader: DatabaseHeader,
-        pageHeader: BTreeHeader
+        pageHeader: BTreeHeader,
+        requestAdditionalPage: RequestAdditionalPageFunction
     ): BTreePageOfType<"index_interior"> {
+        if (pageHeader.type !== "index_interior") {
+            throw new Error("Page is not an index interior");
+        }
+
+        const offsets = this.getCellOffsets(bytes, pageHeader);
+        const indices = offsets.map<BTreeIndexInteriorData>((offset) => {
+            let currentIndex = offset;
+            const pageNumber = bytes.readUInt32BE(currentIndex);
+            currentIndex += 4;
+
+            const { value: payloadSize, length: payloadSizeLength } =
+                this.readVarInt(bytes, currentIndex);
+            currentIndex += payloadSizeLength;
+
+            const usableSize =
+                dbHeader.pageSizeBytes - dbHeader.unusedReservePageSpace;
+            const maxPayload = usableSize - 35;
+            const minPayload = ((usableSize - 12) * 32) / 255 - 23;
+            const K =
+                minPayload + ((payloadSize - minPayload) % (usableSize - 4));
+            const storedSize = Math.floor(
+                payloadSize <= maxPayload
+                    ? payloadSize
+                    : payloadSize > maxPayload && K <= maxPayload
+                    ? K
+                    : minPayload
+            );
+
+            const storedData = bytes.subarray(
+                currentIndex,
+                currentIndex + storedSize
+            );
+
+            currentIndex += storedSize;
+
+            const hasOverflow = storedSize < payloadSize;
+            const overflowPage = hasOverflow
+                ? bytes.readUInt32BE(currentIndex)
+                : undefined;
+            if (hasOverflow) {
+                currentIndex += 4;
+            }
+
+            const overflowPageData = overflowPage
+                ? this.readOverflowRecordData(
+                      dbHeader,
+                      overflowPage,
+                      requestAdditionalPage
+                  )
+                : undefined;
+            const data = overflowPageData
+                ? Buffer.from([...storedData, ...overflowPageData])
+                : storedData;
+
+            return {
+                payloadSize,
+                storedSize,
+                pageNumber,
+                overflowPage,
+                records: this.parseRecord(data, dbHeader),
+            };
+        });
+
         return {
+            indices: [
+                ...indices,
+                {
+                    storedSize: 0,
+                    payloadSize: 0,
+                    records: [],
+                    pageNumber: pageHeader.rightmostPointer,
+                    overflowPage: undefined,
+                },
+            ],
             type: "index_interior",
         };
     }
@@ -287,7 +365,8 @@ export class DatabaseFileBTreePageUtil {
     static parseBTreeIndexLeaf(
         bytes: Buffer,
         dbHeader: DatabaseHeader,
-        pageHeader: BTreeHeader
+        pageHeader: BTreeHeader,
+        requestAdditionalPage: RequestAdditionalPageFunction
     ): BTreePageOfType<"index_leaf"> {
         if (pageHeader.type !== "index_leaf") {
             throw new Error("Page is not an index leaf");
@@ -314,7 +393,7 @@ export class DatabaseFileBTreePageUtil {
                     : minPayload
             );
 
-            const data = bytes.subarray(
+            const storedData = bytes.subarray(
                 currentIndex,
                 currentIndex + storedSize
             );
@@ -325,9 +404,17 @@ export class DatabaseFileBTreePageUtil {
             const overflowPage = hasOverflow
                 ? bytes.readUInt32BE(currentIndex)
                 : undefined;
-            if (hasOverflow) {
-                currentIndex += 4;
-            }
+
+            const overflowPageData = overflowPage
+                ? this.readOverflowRecordData(
+                      dbHeader,
+                      overflowPage,
+                      requestAdditionalPage
+                  )
+                : undefined;
+            const data = overflowPageData
+                ? Buffer.from([...storedData, ...overflowPageData])
+                : storedData;
 
             return {
                 payloadSize,
@@ -507,12 +594,18 @@ export class DatabaseFileBTreePageUtil {
                         requestAdditionalPage
                     );
                 case "index_leaf":
-                    return this.parseBTreeIndexLeaf(bytes, dbHeader, header);
+                    return this.parseBTreeIndexLeaf(
+                        bytes,
+                        dbHeader,
+                        header,
+                        requestAdditionalPage
+                    );
                 case "index_interior":
                     return this.parseBTreeIndexInterior(
                         bytes,
                         dbHeader,
-                        header
+                        header,
+                        requestAdditionalPage
                     );
             }
         } catch (err) {
