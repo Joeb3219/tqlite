@@ -194,11 +194,12 @@ const QueryViewer: React.VFC<{ database: DatabaseFile }> = ({ database }) => {
             columns={Object.keys(results[0]).map((r) => ({
                 key: r,
                 name: r,
-                resizable: true,
+                resizable: true
             }))}
             style={{
                 height: "86vh",
             }}
+            enableVirtualization
         />
     );
 };
