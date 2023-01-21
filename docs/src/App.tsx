@@ -63,9 +63,7 @@ const TableViewer: React.VFC<{ database: DatabaseFile }> = ({ database }) => {
     >(undefined);
 
     const selectedTableRows = React.useMemo(() => {
-        return selectedTable
-            ? database.getTableRows(selectedTable.name)
-            : [];
+        return selectedTable ? database.getRows(selectedTable.name) : [];
     }, [database, selectedTable]);
 
     return (
@@ -117,9 +115,7 @@ const IndexViewer: React.VFC<{ database: DatabaseFile }> = ({ database }) => {
     >(undefined);
 
     const selectedIndexRows = React.useMemo(() => {
-        return selectedIndex
-            ? database.getIndexRowsZipped(selectedIndex.name)
-            : [];
+        return selectedIndex ? database.getRows(selectedIndex.name) : [];
     }, [database, selectedIndex]);
 
     return (
@@ -223,7 +219,7 @@ const PageViewer: React.VFC<{ database: DatabaseFile }> = ({ database }) => {
                                 typeof event.target.value === "number"
                                     ? event.target.value
                                     : -1;
-                            const page = database.loadPage(pageNumber);
+                            const page = database.loadPage(pageNumber, []);
                             setSelectedPage(page);
                         } catch (err) {
                             console.error("Failed to parse page", err);

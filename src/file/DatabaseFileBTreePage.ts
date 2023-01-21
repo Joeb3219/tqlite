@@ -346,7 +346,10 @@ export class DatabaseFileBTreePageUtil {
                 pageNumber,
                 overflowPage,
                 records,
-                cells: DatabaseFileBTreePageUtil.zipRecordsAndColumns(records, columns)
+                cells: DatabaseFileBTreePageUtil.zipRecordsAndColumns(
+                    records,
+                    columns
+                ),
             };
         });
 
@@ -359,7 +362,7 @@ export class DatabaseFileBTreePageUtil {
                     records: [],
                     pageNumber: pageHeader.rightmostPointer,
                     overflowPage: undefined,
-                    cells: {}
+                    cells: {},
                 },
             ],
             type: "index_interior",
@@ -427,7 +430,10 @@ export class DatabaseFileBTreePageUtil {
                 storedSize,
                 overflowPage,
                 records,
-                cells: DatabaseFileBTreePageUtil.zipRecordsAndColumns(records, columns)
+                cells: DatabaseFileBTreePageUtil.zipRecordsAndColumns(
+                    records,
+                    columns
+                ),
             };
         });
 
@@ -528,27 +534,33 @@ export class DatabaseFileBTreePageUtil {
                 ? Buffer.from([...storedData, ...overflowPageData])
                 : storedData;
 
-                const records = this.parseRecord(data, dbHeader);
+            const records = this.parseRecord(data, dbHeader);
             return {
                 payloadSize,
                 storedSize,
                 rowId,
                 overflowPage,
                 records,
-                cells: DatabaseFileBTreePageUtil.zipRecordsAndColumns(records, columns)
+                cells: DatabaseFileBTreePageUtil.zipRecordsAndColumns(
+                    records,
+                    columns
+                ),
             };
         });
 
         return { type: "table_leaf", rows };
     }
 
-    static zipRecordsAndColumns(records: BTreeRecord[], columns: string[]): any {
+    static zipRecordsAndColumns(
+        records: BTreeRecord[],
+        columns: string[]
+    ): any {
         return records.reduce((state, cell, idx) => {
             const column = columns[idx];
 
             return {
                 ...state,
-                [column ?? `unknown_${idx}`]: cell,
+                [column ?? `unknown_${idx}`]: cell.value,
             };
         }, {});
     }
@@ -629,7 +641,8 @@ export class DatabaseFileBTreePageUtil {
                         bytes,
                         dbHeader,
                         header,
-                        requestAdditionalPage
+                        requestAdditionalPage,
+                        columns
                     );
             }
         } catch (err) {

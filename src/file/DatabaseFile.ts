@@ -38,7 +38,11 @@ export class DatabaseFile extends File {
     }
 
     // TODO: implement where for indices
-    getTableRowsInternal(pageNumber: number, columns: string[], where?: Where[]): Row[] {
+    getTableRowsInternal(
+        pageNumber: number,
+        columns: string[],
+        where?: Where[]
+    ): any[] {
         const rootPage = this.loadPage(pageNumber, columns);
 
         if (rootPage?.type === "table_interior") {
@@ -48,7 +52,7 @@ export class DatabaseFile extends File {
         }
 
         if (rootPage?.type === "index_leaf") {
-            return rootPage.indices.map((i) => i.records.map((r) => r.value));
+            return rootPage.indices.map((i) => i.cells);
         }
 
         if (rootPage?.type === "index_interior") {
@@ -58,20 +62,21 @@ export class DatabaseFile extends File {
         }
 
         return rootPage.rows.map<Row>((recordRow) => {
-            return recordRow.records.map((r) => r.value);
+            return recordRow.cells;
         });
     }
 
-    getTableRows(tableName: string, where?: Where[]): Row[] {
-        const entry = this.schema.find(
-            (s) => s.tbl_name === tableName
-        );
+    getRows(tableOrIndexName: string, where?: Where[]): any[] {
+        const entry = this.schema.find((s) => s.name === tableOrIndexName);
 
         if (!entry?.rootpage) {
             return [];
         }
 
-        const columns: string[] = entry.tableDefinition?.columns?.map(c => c.name) ?? entry.indexDefinition?.columns ?? [];
+        const columns: string[] =
+            entry.tableDefinition?.columns?.map((c) => c.name) ??
+            entry.indexDefinition?.columns ??
+            [];
         return this.getTableRowsInternal(entry.rootpage, columns, where);
     }
 
@@ -104,7 +109,7 @@ export class DatabaseFile extends File {
     }
 
     findMasterSchemaPages(): BTreePage[] {
-        const rootPage = this.loadPage(1);
+        const rootPage = this.loadPage(1, []);
         if (
             rootPage?.type === "table_leaf" ||
             rootPage?.type === "index_leaf" ||
@@ -114,7 +119,7 @@ export class DatabaseFile extends File {
         }
 
         return (rootPage?.pointers ?? []).map((p) =>
-            this.loadPage(p.pageNumber)
+            this.loadPage(p.pageNumber, [])
         );
     }
 
