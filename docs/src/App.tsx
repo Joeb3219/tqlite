@@ -3,7 +3,7 @@ import {
     DatabaseFile,
     MasterSchemaEntry,
     QueryPlanner,
-} from "@joeb3219/squeel";
+} from "@joeb3219/tqlite";
 import {
     Button,
     Divider,
@@ -39,7 +39,7 @@ const Header: React.FC = () => {
         >
             <Grid item>
                 <Typography variant={"h6"} color={"primary"}>
-                    Squeel, the pure Typescript SQLite Client
+                    tqlite, the pure Typescript SQLite Client
                 </Typography>
             </Grid>
             <Grid item xs />

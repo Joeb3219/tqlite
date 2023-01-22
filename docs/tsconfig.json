@@ -3,7 +3,7 @@
     "compilerOptions": {
         "jsx": "react-jsx",
         "paths": {
-            "@joeb3219/squeel": ["../src/index"]
+            "@joeb3219/tqlite": ["../src/index"]
         }
     },
     "include": ["src"]

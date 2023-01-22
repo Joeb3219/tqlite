@@ -1,10 +1,10 @@
 {
-    "name": "squeel-docs",
+    "name": "tqlite-docs",
     "version": "0.1.0",
     "private": true,
-    "homepage": "https://joeb3219.github.io/Squeel",
+    "homepage": "https://joeb3219.github.io/tqlite",
     "dependencies": {
-        "@joeb3219/squeel": "link:../",
+        "@joeb3219/tqlite": "link:../",
         "@material-ui/core": "^4.12.4",
         "@material-ui/icons": "^4.11.3",
         "@tsconfig/create-react-app": "^1.0.3",

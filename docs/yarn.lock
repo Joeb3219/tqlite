@@ -1487,7 +1487,7 @@
     "@types/yargs" "^17.0.8"
     chalk "^4.0.0"
 
-"@joeb3219/squeel@link:..":
+"@joeb3219/tqlite@link:..":
   version "0.0.0"
   uid ""
 
