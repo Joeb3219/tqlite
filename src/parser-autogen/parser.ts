@@ -68,8 +68,12 @@ export enum ASTKinds {
     literal_distinct = "literal_distinct",
     literal_as = "literal_as",
     whitespace = "whitespace",
+    $EOF = "$EOF",
 }
-export type start = stmt_list;
+export interface start {
+    kind: ASTKinds.start;
+    stmt_list: stmt_list;
+}
 export interface stmt_list {
     kind: ASTKinds.stmt_list;
     stmt: stmt;
@@ -119,11 +123,11 @@ export interface select_result_column_whole_table {
 export type select_from = select_from_1 | select_from_2;
 export interface select_from_1 {
     kind: ASTKinds.select_from_1;
-    table_or_subquery: select_from_table_or_subquery_list;
+    join: select_from_join;
 }
 export interface select_from_2 {
     kind: ASTKinds.select_from_2;
-    join: select_from_join;
+    table_or_subquery: select_from_table_or_subquery_list;
 }
 export interface select_from_table_or_subquery_list {
     kind: ASTKinds.select_from_table_or_subquery_list;
@@ -157,10 +161,13 @@ export interface select_from_table_or_subquery_$0 {
 export interface select_from_join {
     kind: ASTKinds.select_from_join;
     table_a: select_from_table_or_subquery;
-    joins: Nullable<select_from_join_$0>;
+    joins: select_from_join_$0[];
 }
 export interface select_from_join_$0 {
     kind: ASTKinds.select_from_join_$0;
+    select_from_join_operator: select_from_join_operator;
+    select_from_table_or_subquery: select_from_table_or_subquery;
+    select_from_join_constraint: Nullable<select_from_join_constraint>;
 }
 export interface column_name_list {
     kind: ASTKinds.column_name_list;
@@ -324,7 +331,19 @@ export class Parser {
     public clearMemos(): void {
     }
     public matchstart($$dpth: number, $$cr?: ErrorTracker): Nullable<start> {
-        return this.matchstmt_list($$dpth + 1, $$cr);
+        return this.run<start>($$dpth,
+            () => {
+                let $scope$stmt_list: Nullable<stmt_list>;
+                let $$res: Nullable<start> = null;
+                if (true
+                    && ($scope$stmt_list = this.matchstmt_list($$dpth + 1, $$cr)) !== null
+                    && ((this.matchwhitespace($$dpth + 1, $$cr)) || true)
+                    && this.match$EOF($$cr) !== null
+                ) {
+                    $$res = {kind: ASTKinds.start, stmt_list: $scope$stmt_list};
+                }
+                return $$res;
+            });
     }
     public matchstmt_list($$dpth: number, $$cr?: ErrorTracker): Nullable<stmt_list> {
         return this.run<stmt_list>($$dpth,
@@ -490,13 +509,13 @@ export class Parser {
     public matchselect_from_1($$dpth: number, $$cr?: ErrorTracker): Nullable<select_from_1> {
         return this.run<select_from_1>($$dpth,
             () => {
-                let $scope$table_or_subquery: Nullable<select_from_table_or_subquery_list>;
+                let $scope$join: Nullable<select_from_join>;
                 let $$res: Nullable<select_from_1> = null;
                 if (true
                     && this.matchliteral_from($$dpth + 1, $$cr) !== null
-                    && ($scope$table_or_subquery = this.matchselect_from_table_or_subquery_list($$dpth + 1, $$cr)) !== null
+                    && ($scope$join = this.matchselect_from_join($$dpth + 1, $$cr)) !== null
                 ) {
-                    $$res = {kind: ASTKinds.select_from_1, table_or_subquery: $scope$table_or_subquery};
+                    $$res = {kind: ASTKinds.select_from_1, join: $scope$join};
                 }
                 return $$res;
             });
@@ -504,13 +523,13 @@ export class Parser {
     public matchselect_from_2($$dpth: number, $$cr?: ErrorTracker): Nullable<select_from_2> {
         return this.run<select_from_2>($$dpth,
             () => {
-                let $scope$join: Nullable<select_from_join>;
+                let $scope$table_or_subquery: Nullable<select_from_table_or_subquery_list>;
                 let $$res: Nullable<select_from_2> = null;
                 if (true
                     && this.matchliteral_from($$dpth + 1, $$cr) !== null
-                    && ($scope$join = this.matchselect_from_join($$dpth + 1, $$cr)) !== null
+                    && ($scope$table_or_subquery = this.matchselect_from_table_or_subquery_list($$dpth + 1, $$cr)) !== null
                 ) {
-                    $$res = {kind: ASTKinds.select_from_2, join: $scope$join};
+                    $$res = {kind: ASTKinds.select_from_2, table_or_subquery: $scope$table_or_subquery};
                 }
                 return $$res;
             });
@@ -594,10 +613,11 @@ export class Parser {
                 let $$res: Nullable<select_from_table_or_subquery_3> = null;
                 if (true
                     && (($scope$schema_name = this.matchselect_from_table_or_subquery_$0($$dpth + 1, $$cr)) || true)
-                    && this.loop<whitespace>(() => this.matchwhitespace($$dpth + 1, $$cr), true) !== null
+                    && ((this.matchwhitespace($$dpth + 1, $$cr)) || true)
                     && ($scope$table_name = this.matchidentifier($$dpth + 1, $$cr)) !== null
-                    && this.loop<whitespace>(() => this.matchwhitespace($$dpth + 1, $$cr), true) !== null
+                    && ((this.matchwhitespace($$dpth + 1, $$cr)) || true)
                     && (($scope$alias = this.matchidentifier($$dpth + 1, $$cr)) || true)
+                    && this.loop<whitespace>(() => this.matchwhitespace($$dpth + 1, $$cr), true) !== null
                 ) {
                     $$res = {kind: ASTKinds.select_from_table_or_subquery_3, schema_name: $scope$schema_name, table_name: $scope$table_name, alias: $scope$alias};
                 }
@@ -610,6 +630,7 @@ export class Parser {
                 let $scope$schema_name: Nullable<identifier>;
                 let $$res: Nullable<select_from_table_or_subquery_$0> = null;
                 if (true
+                    && this.loop<whitespace>(() => this.matchwhitespace($$dpth + 1, $$cr), true) !== null
                     && ($scope$schema_name = this.matchidentifier($$dpth + 1, $$cr)) !== null
                     && this.matchliteral_period($$dpth + 1, $$cr) !== null
                 ) {
@@ -622,11 +643,11 @@ export class Parser {
         return this.run<select_from_join>($$dpth,
             () => {
                 let $scope$table_a: Nullable<select_from_table_or_subquery>;
-                let $scope$joins: Nullable<Nullable<select_from_join_$0>>;
+                let $scope$joins: Nullable<select_from_join_$0[]>;
                 let $$res: Nullable<select_from_join> = null;
                 if (true
                     && ($scope$table_a = this.matchselect_from_table_or_subquery($$dpth + 1, $$cr)) !== null
-                    && (($scope$joins = this.matchselect_from_join_$0($$dpth + 1, $$cr)) || true)
+                    && ($scope$joins = this.loop<select_from_join_$0>(() => this.matchselect_from_join_$0($$dpth + 1, $$cr), false)) !== null
                 ) {
                     $$res = {kind: ASTKinds.select_from_join, table_a: $scope$table_a, joins: $scope$joins};
                 }
@@ -636,13 +657,16 @@ export class Parser {
     public matchselect_from_join_$0($$dpth: number, $$cr?: ErrorTracker): Nullable<select_from_join_$0> {
         return this.run<select_from_join_$0>($$dpth,
             () => {
+                let $scope$select_from_join_operator: Nullable<select_from_join_operator>;
+                let $scope$select_from_table_or_subquery: Nullable<select_from_table_or_subquery>;
+                let $scope$select_from_join_constraint: Nullable<Nullable<select_from_join_constraint>>;
                 let $$res: Nullable<select_from_join_$0> = null;
                 if (true
-                    && this.matchselect_from_join_operator($$dpth + 1, $$cr) !== null
-                    && this.matchselect_from_table_or_subquery($$dpth + 1, $$cr) !== null
-                    && ((this.matchselect_from_join_constraint($$dpth + 1, $$cr)) || true)
+                    && ($scope$select_from_join_operator = this.matchselect_from_join_operator($$dpth + 1, $$cr)) !== null
+                    && ($scope$select_from_table_or_subquery = this.matchselect_from_table_or_subquery($$dpth + 1, $$cr)) !== null
+                    && (($scope$select_from_join_constraint = this.matchselect_from_join_constraint($$dpth + 1, $$cr)) || true)
                 ) {
-                    $$res = {kind: ASTKinds.select_from_join_$0, };
+                    $$res = {kind: ASTKinds.select_from_join_$0, select_from_join_operator: $scope$select_from_join_operator, select_from_table_or_subquery: $scope$select_from_table_or_subquery, select_from_join_constraint: $scope$select_from_join_constraint};
                 }
                 return $$res;
             });
@@ -1295,6 +1319,12 @@ export class Parser {
         if(this.memoSafe)
         memo.set($scope$pos.overallPos, [$scope$result, this.mark()]);
         return $scope$result;
+    }
+    private match$EOF(et?: ErrorTracker): Nullable<{kind: ASTKinds.$EOF}> {
+        const res: {kind: ASTKinds.$EOF} | null = this.finished() ? { kind: ASTKinds.$EOF } : null;
+        if(et)
+            et.record(this.mark(), res, { kind: "EOF", negated: this.negating });
+        return res;
     }
 }
 export function parse(s: string): ParseResult {

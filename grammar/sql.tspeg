@@ -1,4 +1,4 @@
-start := stmt_list
+start := stmt_list=stmt_list whitespace? $
 stmt_list := stmt=stmt other_stmts={ whitespace? literal_semi_colon stmt=stmt }*
 stmt := stmt_select
 stmt_select := select_with=select_with? select_core=select_core
@@ -11,12 +11,12 @@ select_result_column := select_result_column_whole_table | literal_asterisk | se
 select_result_column_expression := expression=expression literal_as? column_alias=identifier?
 select_result_column_whole_table := table_name=identifier literal_period literal_asterisk
 
-select_from := literal_from table_or_subquery=select_from_table_or_subquery_list | literal_from join=select_from_join
+select_from :=  literal_from join=select_from_join | literal_from table_or_subquery=select_from_table_or_subquery_list
 select_from_table_or_subquery_list := table_or_subquery=select_from_table_or_subquery other_table_or_subqueries={ whitespace? literal_comma table_or_subquery=select_from_table_or_subquery }*
 select_from_table_or_subquery := literal_open_paren table_or_subquery=select_from literal_close_paren 
                                     | literal_open_paren select_stmt=stmt_select literal_close_paren literal_as? alias=identifier?
-                                    | schema_name={schema_name=identifier literal_period}? whitespace* table_name=identifier whitespace* alias=identifier?
-select_from_join := table_a=select_from_table_or_subquery joins={ select_from_join_operator select_from_table_or_subquery select_from_join_constraint?  }?
+                                    | schema_name={whitespace* schema_name=identifier literal_period}? whitespace? table_name=identifier whitespace? alias=identifier? whitespace*
+select_from_join := table_a=select_from_table_or_subquery joins={ select_from_join_operator=select_from_join_operator select_from_table_or_subquery=select_from_table_or_subquery select_from_join_constraint=select_from_join_constraint?  }+
 
 column_name_list            :=      column=identifier other_columns={ literal_comma column=identifier }?
 select_from_join_constraint :=            on=literal_on expression=expression
