@@ -1,3 +1,5 @@
+const parser = require('sqlite-parser');
+
 type TokenType =
     | "CREATE"
     | "TABLE"
@@ -195,7 +197,23 @@ export class TableDefinitionParser {
         }
     }
 
+    private tryOtherParser() {
+        try {
+            // const parser = new Parser()
+            // const ast = parser.astify('SELECT f.id, f.name, b.bar, r.baz FROM foobar f LEFT JOIN baz b ON f.id = b.id, roger r WHERE f.age > 0', {
+            //     database: 'sqlite'
+            // });
+            // const astFlat = Array.isArray(ast) ? ast : [ast];
+
+            // console.log('result', ast);
+        } catch( err) {
+            console.log(this.sql);
+            console.error('failed to parse', err);
+        }
+    }
+
     private parseRoot() {
+        this.tryOtherParser();
         this.currentTokenPosition = 0;
         this.tableDefinition = undefined;
 
