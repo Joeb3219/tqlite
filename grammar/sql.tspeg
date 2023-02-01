@@ -1,0 +1,96 @@
+start := stmt_list=stmt_list whitespace? $
+stmt_list := stmt=stmt other_stmts={ whitespace? literal_semi_colon stmt=stmt }*
+stmt := stmt_select
+stmt_select := select_with=select_with? select_core=select_core
+
+select_core := literal_select qualifier=select_qualifier? columns=select_result_column_list from=select_from? where=select_where?
+select_qualifier := literal_all | literal_distinct
+
+select_result_column_list := select_result_column=select_result_column other_result_columns={ whitespace? literal_comma select_result_column=select_result_column }*
+select_result_column := select_result_column_whole_table | literal_asterisk | select_result_column_expression
+select_result_column_expression := expression=expression literal_as? column_alias=identifier?
+select_result_column_whole_table := table_name=identifier literal_period literal_asterisk
+
+select_from :=  literal_from join=select_from_join | literal_from table_or_subquery=select_from_table_or_subquery_list
+select_from_table_or_subquery_list := table_or_subquery=select_from_table_or_subquery other_table_or_subqueries={ whitespace? literal_comma table_or_subquery=select_from_table_or_subquery }*
+select_from_table_or_subquery := literal_open_paren table_or_subquery=select_from literal_close_paren 
+                                    | literal_open_paren select_stmt=stmt_select literal_close_paren literal_as? alias=identifier?
+                                    | schema_name={whitespace* schema_name=identifier literal_period}? whitespace? table_name=identifier whitespace? alias=identifier? whitespace*
+select_from_join := table_a=select_from_table_or_subquery joins={ select_from_join_operator=select_from_join_operator select_from_table_or_subquery=select_from_table_or_subquery select_from_join_constraint=select_from_join_constraint?  }+
+
+column_name_list            :=      column=identifier other_columns={ literal_comma column=identifier }?
+select_from_join_constraint :=            literal_on expression=expression
+                                    |   literal_using literal_open_paren columns=column_name_list literal_close_paren
+
+select_from_join_operator :=          type=literal_natural? literal_join 
+                                    |   natural=literal_natural? type=literal_left outer=literal_outer? literal_join
+                                    |   natural=literal_natural? type=literal_right outer=literal_outer? literal_join
+                                    |   natural=literal_natural? type=literal_full outer=literal_outer? literal_join
+                                    |   natural=literal_natural? type=literal_inner literal_join
+                                    |   type=literal_cross literal_join
+
+select_where := literal_where expression=expression
+
+expression := expression_front_recursive
+expression_column := schema_name={whitespace* schema_name=identifier literal_period} table_name={whitespace* table_name=identifier literal_period} column_name=identifier | table_name={whitespace* table_name=identifier literal_period}? column_name=identifier 
+expression_unary := unary_operator=unary_operator expression=expression
+expression_non_front_recursive := expression_column | expression_unary | value_literal
+
+expression_binary := expression_a=expression_non_front_recursive operator=binary_operator expression_b=expression
+expression_parens := literal_open_paren expression=expression_front_recursive literal_close_paren
+expression_front_recursive := expression_parens | expression_binary | expression_non_front_recursive
+
+
+select_with := literal_with
+
+identifier :=  whitespace* value='[a-zA-Z][a-zA-Z0-9_]*'  whitespace*
+num := whitespace* value='[0-9]+'  whitespace*
+quoted_string := whitespace* value='"(?:[^"\\]|\\.)*"' whitespace* 
+
+unary_operator := literal_not
+binary_operator := literal_and | literal_or | literal_plus | literal_minus | literal_asterisk | literal_slash | literal_gte | literal_lte | literal_gt | literal_lt | literal_equal | literal_not_equal 
+value_literal := identifier | num | literal_true | literal_false | literal_null | quoted_string
+
+literal_and :=  whitespace* literal='and' whitespace*
+literal_or :=  whitespace* literal='or' whitespace*
+literal_plus :=  whitespace* literal='\+' whitespace*
+literal_minus :=  whitespace* literal='-' whitespace*
+literal_slash :=  whitespace* literal='/' whitespace*
+literal_gte :=  whitespace* literal='>=' whitespace*
+literal_lte :=  whitespace* literal='<=' whitespace*
+literal_gt :=  whitespace* literal='>' whitespace*
+literal_lt :=  whitespace* literal='<' whitespace*
+literal_equal :=  whitespace* literal='=' whitespace*
+literal_not_equal :=  whitespace* literal='!=' whitespace* | whitespace* literal='<>' whitespace*
+literal_not :=  whitespace* literal='not' whitespace*
+literal_true :=  whitespace* literal='true' whitespace*
+literal_false :=  whitespace* literal='false' whitespace*
+literal_null :=  whitespace* literal='null' whitespace*
+
+literal_comma :=  whitespace* literal=',' whitespace*
+literal_period :=  whitespace* literal='\.' whitespace*
+literal_asterisk :=  whitespace* literal='\*' whitespace*
+literal_semi_colon :=  whitespace* literal=';' whitespace*
+literal_open_paren :=  whitespace* literal='\(' whitespace*
+literal_close_paren :=  whitespace* literal='\)' whitespace*
+
+literal_on :=  whitespace* literal='on' whitespace*
+literal_using :=  whitespace* literal='using' whitespace*
+literal_natural :=  whitespace* literal='natural' whitespace*
+literal_outer :=  whitespace* literal='outer' whitespace*
+literal_left :=  whitespace* literal='left' whitespace*
+literal_right :=  whitespace* literal='right' whitespace*
+literal_inner :=  whitespace* literal='inner' whitespace*
+literal_full :=  whitespace* literal='full' whitespace*
+literal_cross :=  whitespace* literal='cross' whitespace*
+literal_join :=  whitespace* literal='join' whitespace*
+
+literal_from :=  whitespace* literal='from' whitespace*
+literal_with :=  whitespace* literal='with' whitespace*
+literal_select :=  whitespace* literal='select' whitespace*
+literal_where :=  whitespace* literal='where' whitespace*
+literal_all :=  whitespace* literal='all' whitespace*
+literal_distinct :=  whitespace* literal='distinct' whitespace*
+literal_as :=  whitespace* literal='as' whitespace*
+
+whitespace := ' '

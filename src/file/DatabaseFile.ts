@@ -6,7 +6,6 @@ import {
     TableDefinition,
     TableDefinitionParser,
 } from "../parser/TableDefinition.parser";
-import { Where } from "../query/QueryPlanner";
 import { BTreePage, DatabaseHeader } from "./DatabaseFile.types";
 import { DatabaseFileBTreePageUtil } from "./DatabaseFileBTreePage";
 import { DatabaseFileHeaderUtil } from "./DatabaseFileHeader";
@@ -41,13 +40,13 @@ export class DatabaseFile extends File {
     getTableRowsInternal(
         pageNumber: number,
         columns: string[],
-        where?: Where[]
+        evaluationCriterion: (row: any) => boolean
     ): any[] {
         const rootPage = this.loadPage(pageNumber, columns);
 
         if (rootPage?.type === "table_interior") {
             return rootPage.pointers.flatMap((p) =>
-                this.getTableRowsInternal(p.pageNumber, columns, where)
+                this.getTableRowsInternal(p.pageNumber, columns, evaluationCriterion)
             );
         }
 
@@ -57,16 +56,16 @@ export class DatabaseFile extends File {
 
         if (rootPage?.type === "index_interior") {
             return rootPage.indices.flatMap((p) =>
-                this.getTableRowsInternal(p.pageNumber, columns, where)
+                this.getTableRowsInternal(p.pageNumber, columns, evaluationCriterion)
             );
         }
 
         return rootPage.rows.map<Row>((recordRow) => {
             return recordRow.cells;
-        });
+        }).filter(r => evaluationCriterion(r));
     }
 
-    getRows(tableOrIndexName: string, where?: Where[]): any[] {
+    getRows(tableOrIndexName: string, evaluationCriterion: (row: any) => boolean): any[] {
         const entry = this.schema.find((s) => s.name === tableOrIndexName);
 
         if (!entry?.rootpage) {
@@ -77,7 +76,7 @@ export class DatabaseFile extends File {
             entry.tableDefinition?.columns?.map((c) => c.name) ??
             entry.indexDefinition?.columns ??
             [];
-        return this.getTableRowsInternal(entry.rootpage, columns, where);
+        return this.getTableRowsInternal(entry.rootpage, columns, evaluationCriterion);
     }
 
     parseTableDefinition(sql?: string): TableDefinition | undefined {
