@@ -14,7 +14,6 @@
     "dependencies": {
         "commander": "^10.0.0",
         "lodash": "^4.17.21",
-        "sqlite-parser": "^1.0.1",
         "ts-jest": "^29.0.5",
         "typescript": "^4.9.4"
     },
@@ -22,7 +21,6 @@
         "@types/jest": "^29.2.5",
         "@types/lodash": "^4.14.191",
         "@types/node": "^18.11.3",
-        "arpege": "^1.3.0",
         "jest": "^29.3.1",
         "nodemon": "^2.0.20",
         "prettier": "^2.8.1",
