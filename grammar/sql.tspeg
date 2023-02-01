@@ -3,7 +3,7 @@ stmt_list := stmt=stmt other_stmts={ whitespace? literal_semi_colon stmt=stmt }*
 stmt := stmt_select
 stmt_select := select_with=select_with? select_core=select_core
 
-select_core := literal_select qualifier=select_qualifier? columns=select_result_column_list from=select_from? where=select_where?
+select_core := literal_select qualifier=select_qualifier? columns=select_result_column_list from=select_from? where=select_where? order_by=select_order? limit=select_limit?
 select_qualifier := literal_all | literal_distinct
 
 select_result_column_list := select_result_column=select_result_column other_result_columns={ whitespace? literal_comma select_result_column=select_result_column }*
@@ -31,6 +31,16 @@ select_from_join_operator :=          type=literal_natural? literal_join
 
 select_where := literal_where expression=expression
 
+select_order := literal_order literal_by select_ordering_term_list=select_ordering_term_list
+select_ordering_term_list := term=select_ordering_term other_terms={ literal_comma term=select_ordering_term }*
+select_ordering_term := expression=expression collate={select_ordering_term_collate}? sort_direction={select_ordering_term_sort_direction}? nulls_direction={select_ordering_term_nulls_direction}?
+select_ordering_term_sort_direction := value=literal_asc | value=literal_desc
+select_ordering_term_collate := literal_collate collation_name=identifier
+select_ordering_term_nulls_direction := literal_nulls value=literal_first | literal_nulls value=literal_last
+
+select_limit := literal_limit expression=expression offset=select_limit_offset?
+select_limit_offset := literal_offset offset=expression | literal_comma offset=expression
+
 expression := expression_front_recursive
 expression_column := schema_name={whitespace* schema_name=identifier literal_period} table_name={whitespace* table_name=identifier literal_period} column_name=identifier | table_name={whitespace* table_name=identifier literal_period}? column_name=identifier 
 expression_unary := unary_operator=unary_operator expression=expression
@@ -56,7 +66,19 @@ all_literals := literal_and | literal_or | literal_plus | literal_minus | litera
                             | literal_comma | literal_asterisk | literal_period | literal_semi_colon | literal_open_paren
                             | literal_close_paren | literal_on | literal_using | literal_natural | literal_outer | literal_left
                             | literal_right | literal_inner | literal_full | literal_cross | literal_join | literal_from | literal_with 
-                            | literal_select | literal_where | literal_all | literal_distinct | literal_as
+                            | literal_select | literal_where | literal_all | literal_distinct | literal_as | literal_order | literal_by
+                            | literal_collate | literal_asc | literal_desc | literal_nulls | literal_first | literal_last | literal_limit | literal_offset
+
+literal_order :=  whitespace* literal='order' whitespace*
+literal_by :=  whitespace* literal='by' whitespace*
+literal_collate :=  whitespace* literal='collate' whitespace*
+literal_asc :=  whitespace* literal='asc' whitespace*
+literal_desc :=  whitespace* literal='desc' whitespace*
+literal_nulls :=  whitespace* literal='nulls' whitespace*
+literal_first :=  whitespace* literal='first' whitespace*
+literal_last :=  whitespace* literal='last' whitespace*
+literal_limit :=  whitespace* literal='limit' whitespace*
+literal_offset :=  whitespace* literal='offset' whitespace*
 
 literal_and :=  whitespace* literal='and' whitespace*
 literal_or :=  whitespace* literal='or' whitespace*

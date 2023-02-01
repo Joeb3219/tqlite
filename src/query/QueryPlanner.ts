@@ -4,6 +4,8 @@ import {
     ASTKinds,
     binary_operator,
     expression_front_recursive,
+    select_limit,
+    select_ordering_term,
     select_result_column,
     select_where,
     stmt_select,
@@ -36,7 +38,7 @@ export class QueryPlanner {
         private readonly query: stmt_select
     ) {}
 
-    // SELECT m.name AS mname, s.name as sname, p.modId AS modId FROM knex_migrations m LEFT JOIN sqlite_sequence s ON m.batch = s.seq LEFT JOIN playsets_mods p ON p.enabled != s.batch WHERE s.name = "a"
+    // SELECT * from knex_migrations s ORDER BY s.batch desc, s.name asc LIMIT 6
     fetchResultSet(
         from: FlattenedSelectFrom[],
         where?: select_where
@@ -304,16 +306,93 @@ export class QueryPlanner {
         });
     }
 
+    applyOrdering(rows: ResultSet, orderBy: select_ordering_term[]): ResultSet {
+        const sorted = rows.sort((a, b) => {
+            return orderBy.reduce<-1 | 0 | 1>((state, term) => {
+                // We don't have to evaluate this column if the previous column wasn't equal
+                if (state !== 0) {
+                    return state;
+                }
+
+                const isAscending =
+                    term.sort_direction?.value.kind !== ASTKinds.literal_desc;
+                const evalA = this.evaluateExpression(a, term.expression);
+                const evalB = this.evaluateExpression(b, term.expression);
+
+                // We're the same, let's look at the next column.
+                if (evalA.value == evalB.value) {
+                    return 0;
+                }
+
+                if (
+                    evalA.value === null &&
+                    evalB.value !== null &&
+                    term.nulls_direction
+                ) {
+                    return term.nulls_direction.value.kind ===
+                        ASTKinds.literal_first
+                        ? 1
+                        : -1;
+                }
+
+                if (
+                    evalA.value !== null &&
+                    evalB.value === null &&
+                    term.nulls_direction
+                ) {
+                    return term.nulls_direction.value.kind ===
+                        ASTKinds.literal_first
+                        ? -1
+                        : 1;
+                }
+
+                if (evalA.value < evalB.value && term.sort_direction) {
+                    return isAscending ? -1 : 1;
+                }
+
+                return isAscending ? 1 : -1;
+            }, 0);
+        });
+
+        return sorted;
+    }
+
+    applyLimit(rows: any[], limit: select_limit): any[] {
+        // TODO: handle non-number offsets and limits
+        const offsetValue =
+            limit.offset?.offset?.kind === ASTKinds.num
+                ? parseInt(limit.offset.offset.value)
+                : 0;
+        const limitValue =
+            limit.expression.kind === ASTKinds.num
+                ? parseInt(limit.expression.value)
+                : 0;
+        return rows.slice(offsetValue, limitValue + offsetValue);
+    }
+
     execute(): any[] {
-        const { where } = this.query.select_core;
+        const { where, limit } = this.query.select_core;
         const columns = ASTUtil.flattenSelectRealColumnList(
             this.query.select_core.columns
         );
         const from = this.query.select_core.from
             ? ASTUtil.flattenSelectFrom(this.query.select_core.from)
             : [];
+        const orderBy = this.query.select_core.order_by
+            ? ASTUtil.flattenOrderByTermList(
+                  this.query.select_core.order_by.select_ordering_term_list
+              )
+            : [];
 
         const resultSet = this.fetchResultSet(from, where ?? undefined);
-        return this.selectColumns(resultSet, columns);
+        const orderedResultSet = this.applyOrdering(resultSet, orderBy);
+        const selectionAppliedRows = this.selectColumns(
+            orderedResultSet,
+            columns
+        );
+
+        return limit
+            ? this.applyLimit(selectionAppliedRows, limit)
+            : selectionAppliedRows;
     }
 }

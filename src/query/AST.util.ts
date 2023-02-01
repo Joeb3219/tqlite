@@ -3,6 +3,7 @@ import {
     select_from,
     select_from_1,
     select_from_table_or_subquery,
+    select_ordering_term_list,
     select_result_column,
     select_result_column_list,
 } from "../parser-autogen/parser";
@@ -31,5 +32,9 @@ export class ASTUtil {
                     ),
                 ];
         }
+    }
+
+    static flattenOrderByTermList(termList: select_ordering_term_list) {
+        return [termList.term, ...termList.other_terms.map((t) => t.term)];
     }
 }
