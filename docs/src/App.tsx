@@ -173,7 +173,6 @@ const QueryViewer: React.VFC<{ database: DatabaseFile }> = ({ database }) => {
 
         try {
             const ast = parse(query);
-            console.log("ast", { query, ast });
 
             if (ast.ast?.stmt_list.stmt.kind !== ASTKinds.stmt_select) {
                 return [];
@@ -184,7 +183,10 @@ const QueryViewer: React.VFC<{ database: DatabaseFile }> = ({ database }) => {
                 ast.ast.stmt_list.stmt
             );
 
-            return queryPlanner.execute();
+            const result = queryPlanner.execute();
+            console.log("result", result);
+
+            return result;
         } catch (err) {
             console.error(err);
             return [];

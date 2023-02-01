@@ -115,7 +115,7 @@ export class QueryPlanner {
                                         );
                                 }
                                 return QueryPlannerJoin.innerJoin(
-                                    joins,
+                                    joinState,
                                     joinTable,
                                     criterion
                                 );
@@ -128,10 +128,22 @@ export class QueryPlanner {
                         return this.fetchResultSet(
                             ASTUtil.flattenSelectFrom(f.table_or_subquery)
                         );
-                    case ASTKinds.select_from_table_or_subquery_2:
-                        throw new Error(
-                            "Select result set is not yet implemented"
-                        );
+                    case ASTKinds.select_from_table_or_subquery_2: {
+                        const innerSelect = new QueryPlanner(
+                            this.database,
+                            f.select_stmt
+                        ).execute();
+                        const alias = f.alias?.value;
+                        if (!alias) {
+                            throw new Error(
+                                "Unnamed from-select clauses not yet supported"
+                            );
+                        }
+
+                        return innerSelect.map<ResultSet[number]>((s) => ({
+                            [alias]: s,
+                        }));
+                    }
                     case ASTKinds.select_from_table_or_subquery_3:
                         // TODO: handle schemas
                         // TODO: properly handle joining with other tables
