@@ -10,6 +10,14 @@ export class QueryPlannerJoin {
     ): ResultSet {
         const data: ResultSet = [];
 
+        if (setA.length === 0) {
+            return setB;
+        }
+
+        if (setB.length === 0) {
+            return setA;
+        }
+
         for (const rowA of setA) {
             for (const rowB of setB) {
                 const proposedRow = { ...rowA, ...rowB };

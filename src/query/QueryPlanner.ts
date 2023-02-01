@@ -39,6 +39,114 @@ export class QueryPlanner {
         private readonly query: stmt_select
     ) {}
 
+    private fetchResultSetInternal(
+        from: FlattenedSelectFrom,
+        where?: select_where
+    ): ResultSet {
+        switch (from.kind) {
+            case ASTKinds.select_from_1: {
+                const tableA = this.fetchResultSet([from.join.table_a]);
+                const joins = from.join.joins.reduce<ResultSet>(
+                    (joinState, join) => {
+                        const joinTable = this.fetchResultSet(
+                            [join.select_from_table_or_subquery],
+                            undefined
+                        ); // TODO add where
+                        const criterion = (row: any): boolean => {
+                            if (!join.select_from_join_constraint) {
+                                return true;
+                            }
+
+                            if (
+                                join.select_from_join_constraint.kind ===
+                                ASTKinds.select_from_join_constraint_1
+                            ) {
+                                return !!this.evaluateExpression(
+                                    row,
+                                    join.select_from_join_constraint.expression
+                                ).value;
+                            }
+
+                            throw new Error("USING clause not yet implemented");
+                        };
+                        switch (join.select_from_join_operator.type?.kind) {
+                            case ASTKinds.literal_natural:
+                                throw new Error(
+                                    "Natural join not yet implemented"
+                                );
+                            case ASTKinds.literal_left:
+                                return QueryPlannerJoin.leftJoin(
+                                    joinState,
+                                    joinTable,
+                                    criterion
+                                );
+                            case ASTKinds.literal_right:
+                                return QueryPlannerJoin.rightJoin(
+                                    joinState,
+                                    joinTable,
+                                    criterion
+                                );
+                            case ASTKinds.literal_inner:
+                                return QueryPlannerJoin.innerJoin(
+                                    joinState,
+                                    joinTable,
+                                    criterion
+                                );
+                            case ASTKinds.literal_full:
+                                return QueryPlannerJoin.fullJoin(
+                                    joinState,
+                                    joinTable,
+                                    criterion
+                                );
+                            case ASTKinds.literal_cross:
+                                return QueryPlannerJoin.crossJoin(
+                                    joinState,
+                                    joinTable,
+                                    criterion
+                                );
+                        }
+                        return QueryPlannerJoin.innerJoin(
+                            joinState,
+                            joinTable,
+                            criterion
+                        );
+                    },
+                    tableA
+                );
+                return joins;
+            }
+            case ASTKinds.select_from_table_or_subquery_1:
+                return this.fetchResultSet(
+                    ASTUtil.flattenSelectFrom(from.table_or_subquery)
+                );
+            case ASTKinds.select_from_table_or_subquery_2: {
+                const innerSelect = new QueryPlanner(
+                    this.database,
+                    from.select_stmt
+                ).execute();
+                const alias = from.alias?.value;
+                if (!alias) {
+                    throw new Error(
+                        "Unnamed from-select clauses not yet supported"
+                    );
+                }
+
+                return innerSelect.map<ResultSet[number]>((s) => ({
+                    [alias]: s,
+                }));
+            }
+            case ASTKinds.select_from_table_or_subquery_3:
+                // TODO: handle schemas
+                // TODO: properly handle joining with other tables
+                // TODO: pre-mature filtering
+                return this.database
+                    .getRows(from.table_name.value, () => true)
+                    .map((row) => ({
+                        [from.alias?.value ?? from.table_name.value]: row,
+                    }));
+        }
+    }
+
     // SELECT * from knex_migrations s ORDER BY s.batch desc, s.name asc LIMIT 6
     fetchResultSet(
         from: FlattenedSelectFrom[],
@@ -46,115 +154,8 @@ export class QueryPlanner {
     ): ResultSet {
         return from
             .reduce<ResultSet>((state, f) => {
-                switch (f.kind) {
-                    case ASTKinds.select_from_1: {
-                        const tableA = this.fetchResultSet([f.join.table_a]);
-                        const joins = f.join.joins.reduce<ResultSet>(
-                            (joinState, join) => {
-                                const joinTable = this.fetchResultSet(
-                                    [join.select_from_table_or_subquery],
-                                    undefined
-                                ); // TODO add where
-                                const criterion = (row: any): boolean => {
-                                    if (!join.select_from_join_constraint) {
-                                        return true;
-                                    }
-
-                                    if (
-                                        join.select_from_join_constraint
-                                            .kind ===
-                                        ASTKinds.select_from_join_constraint_1
-                                    ) {
-                                        return !!this.evaluateExpression(
-                                            row,
-                                            join.select_from_join_constraint
-                                                .expression
-                                        ).value;
-                                    }
-
-                                    throw new Error(
-                                        "USING clause not yet implemented"
-                                    );
-                                };
-                                switch (
-                                    join.select_from_join_operator.type?.kind
-                                ) {
-                                    case ASTKinds.literal_natural:
-                                        throw new Error(
-                                            "Natural join not yet implemented"
-                                        );
-                                    case ASTKinds.literal_left:
-                                        return QueryPlannerJoin.leftJoin(
-                                            joinState,
-                                            joinTable,
-                                            criterion
-                                        );
-                                    case ASTKinds.literal_right:
-                                        return QueryPlannerJoin.rightJoin(
-                                            joinState,
-                                            joinTable,
-                                            criterion
-                                        );
-                                    case ASTKinds.literal_inner:
-                                        return QueryPlannerJoin.innerJoin(
-                                            joinState,
-                                            joinTable,
-                                            criterion
-                                        );
-                                    case ASTKinds.literal_full:
-                                        return QueryPlannerJoin.fullJoin(
-                                            joinState,
-                                            joinTable,
-                                            criterion
-                                        );
-                                    case ASTKinds.literal_cross:
-                                        return QueryPlannerJoin.crossJoin(
-                                            joinState,
-                                            joinTable,
-                                            criterion
-                                        );
-                                }
-                                return QueryPlannerJoin.innerJoin(
-                                    joinState,
-                                    joinTable,
-                                    criterion
-                                );
-                            },
-                            tableA
-                        );
-                        return joins;
-                    }
-                    case ASTKinds.select_from_table_or_subquery_1:
-                        return this.fetchResultSet(
-                            ASTUtil.flattenSelectFrom(f.table_or_subquery)
-                        );
-                    case ASTKinds.select_from_table_or_subquery_2: {
-                        const innerSelect = new QueryPlanner(
-                            this.database,
-                            f.select_stmt
-                        ).execute();
-                        const alias = f.alias?.value;
-                        if (!alias) {
-                            throw new Error(
-                                "Unnamed from-select clauses not yet supported"
-                            );
-                        }
-
-                        return innerSelect.map<ResultSet[number]>((s) => ({
-                            [alias]: s,
-                        }));
-                    }
-                    case ASTKinds.select_from_table_or_subquery_3:
-                        // TODO: handle schemas
-                        // TODO: properly handle joining with other tables
-                        // TODO: pre-mature filtering
-                        return this.database
-                            .getRows(f.table_name.value, () => true)
-                            .map((row) => ({
-                                [f.alias?.value ?? f.table_name.value]: row,
-                            }));
-                }
-                return state;
+                const newSource = this.fetchResultSetInternal(f, where);
+                return QueryPlannerJoin.innerJoin(state, newSource, () => true);
             }, [])
             .filter((row) =>
                 where
