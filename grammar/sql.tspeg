@@ -43,13 +43,20 @@ expression_front_recursive := expression_parens | expression_binary | expression
 
 select_with := literal_with
 
-identifier :=  whitespace* value='[a-zA-Z][a-zA-Z0-9_]*'  whitespace*
+identifier :=  whitespace* !all_literals value='[a-zA-Z][a-zA-Z0-9_]*'  whitespace*
 num := whitespace* value='[0-9]+'  whitespace*
 quoted_string := whitespace* value='"(?:[^"\\]|\\.)*"' whitespace* 
 
 unary_operator := literal_not
 binary_operator := literal_and | literal_or | literal_plus | literal_minus | literal_asterisk | literal_slash | literal_gte | literal_lte | literal_gt | literal_lt | literal_equal | literal_not_equal 
 value_literal := identifier | num | literal_true | literal_false | literal_null | quoted_string
+
+all_literals := literal_and | literal_or | literal_plus | literal_minus | literal_slash | literal_gte | literal_lte | literal_lt | literal_gt
+                            | literal_equal | literal_not_equal | literal_not | literal_true | literal_false | literal_null 
+                            | literal_comma | literal_asterisk | literal_period | literal_semi_colon | literal_open_paren
+                            | literal_close_paren | literal_on | literal_using | literal_natural | literal_outer | literal_left
+                            | literal_right | literal_inner | literal_full | literal_cross | literal_join | literal_from | literal_with 
+                            | literal_select | literal_where | literal_all | literal_distinct | literal_as
 
 literal_and :=  whitespace* literal='and' whitespace*
 literal_or :=  whitespace* literal='or' whitespace*
