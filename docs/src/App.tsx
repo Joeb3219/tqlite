@@ -65,7 +65,7 @@ const TableViewer: React.VFC<{ database: DatabaseFile }> = ({ database }) => {
     >(undefined);
 
     const selectedTableRows = React.useMemo(() => {
-        return selectedTable ? database.getRows(selectedTable.name) : [];
+        return selectedTable ? database.getRows(selectedTable.name, () => true) : [];
     }, [database, selectedTable]);
 
     return (
@@ -117,7 +117,7 @@ const IndexViewer: React.VFC<{ database: DatabaseFile }> = ({ database }) => {
     >(undefined);
 
     const selectedIndexRows = React.useMemo(() => {
-        return selectedIndex ? database.getRows(selectedIndex.name) : [];
+        return selectedIndex ? database.getRows(selectedIndex.name, () => true) : [];
     }, [database, selectedIndex]);
 
     return (

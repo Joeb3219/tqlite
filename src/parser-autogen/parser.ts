@@ -60,6 +60,7 @@ export enum ASTKinds {
     select_with = "select_with",
     identifier = "identifier",
     num = "num",
+    quoted_string = "quoted_string",
     unary_operator = "unary_operator",
     binary_operator_1 = "binary_operator_1",
     binary_operator_2 = "binary_operator_2",
@@ -78,6 +79,7 @@ export enum ASTKinds {
     value_literal_3 = "value_literal_3",
     value_literal_4 = "value_literal_4",
     value_literal_5 = "value_literal_5",
+    value_literal_6 = "value_literal_6",
     literal_and = "literal_and",
     literal_or = "literal_or",
     literal_plus = "literal_plus",
@@ -232,7 +234,6 @@ export interface column_name_list_$0 {
 export type select_from_join_constraint = select_from_join_constraint_1 | select_from_join_constraint_2;
 export interface select_from_join_constraint_1 {
     kind: ASTKinds.select_from_join_constraint_1;
-    on: literal_on;
     expression: expression;
 }
 export interface select_from_join_constraint_2 {
@@ -332,6 +333,10 @@ export interface num {
     kind: ASTKinds.num;
     value: string;
 }
+export interface quoted_string {
+    kind: ASTKinds.quoted_string;
+    value: string;
+}
 export type unary_operator = literal_not;
 export type binary_operator = binary_operator_1 | binary_operator_2 | binary_operator_3 | binary_operator_4 | binary_operator_5 | binary_operator_6 | binary_operator_7 | binary_operator_8 | binary_operator_9 | binary_operator_10 | binary_operator_11 | binary_operator_12;
 export type binary_operator_1 = literal_and;
@@ -346,12 +351,13 @@ export type binary_operator_9 = literal_gt;
 export type binary_operator_10 = literal_lt;
 export type binary_operator_11 = literal_equal;
 export type binary_operator_12 = literal_not_equal;
-export type value_literal = value_literal_1 | value_literal_2 | value_literal_3 | value_literal_4 | value_literal_5;
+export type value_literal = value_literal_1 | value_literal_2 | value_literal_3 | value_literal_4 | value_literal_5 | value_literal_6;
 export type value_literal_1 = identifier;
 export type value_literal_2 = num;
 export type value_literal_3 = literal_true;
 export type value_literal_4 = literal_false;
 export type value_literal_5 = literal_null;
+export type value_literal_6 = quoted_string;
 export interface literal_and {
     kind: ASTKinds.literal_and;
     literal: string;
@@ -908,14 +914,13 @@ export class Parser {
     public matchselect_from_join_constraint_1($$dpth: number, $$cr?: ErrorTracker): Nullable<select_from_join_constraint_1> {
         return this.run<select_from_join_constraint_1>($$dpth,
             () => {
-                let $scope$on: Nullable<literal_on>;
                 let $scope$expression: Nullable<expression>;
                 let $$res: Nullable<select_from_join_constraint_1> = null;
                 if (true
-                    && ($scope$on = this.matchliteral_on($$dpth + 1, $$cr)) !== null
+                    && this.matchliteral_on($$dpth + 1, $$cr) !== null
                     && ($scope$expression = this.matchexpression($$dpth + 1, $$cr)) !== null
                 ) {
-                    $$res = {kind: ASTKinds.select_from_join_constraint_1, on: $scope$on, expression: $scope$expression};
+                    $$res = {kind: ASTKinds.select_from_join_constraint_1, expression: $scope$expression};
                 }
                 return $$res;
             });
@@ -1256,6 +1261,21 @@ export class Parser {
                 return $$res;
             });
     }
+    public matchquoted_string($$dpth: number, $$cr?: ErrorTracker): Nullable<quoted_string> {
+        return this.run<quoted_string>($$dpth,
+            () => {
+                let $scope$value: Nullable<string>;
+                let $$res: Nullable<quoted_string> = null;
+                if (true
+                    && this.loop<whitespace>(() => this.matchwhitespace($$dpth + 1, $$cr), true) !== null
+                    && ($scope$value = this.regexAccept(String.raw`(?:"(?:[^"\\]|\\.)*")`, $$dpth + 1, $$cr)) !== null
+                    && this.loop<whitespace>(() => this.matchwhitespace($$dpth + 1, $$cr), true) !== null
+                ) {
+                    $$res = {kind: ASTKinds.quoted_string, value: $scope$value};
+                }
+                return $$res;
+            });
+    }
     public matchunary_operator($$dpth: number, $$cr?: ErrorTracker): Nullable<unary_operator> {
         return this.matchliteral_not($$dpth + 1, $$cr);
     }
@@ -1318,6 +1338,7 @@ export class Parser {
             () => this.matchvalue_literal_3($$dpth + 1, $$cr),
             () => this.matchvalue_literal_4($$dpth + 1, $$cr),
             () => this.matchvalue_literal_5($$dpth + 1, $$cr),
+            () => this.matchvalue_literal_6($$dpth + 1, $$cr),
         ]);
     }
     public matchvalue_literal_1($$dpth: number, $$cr?: ErrorTracker): Nullable<value_literal_1> {
@@ -1334,6 +1355,9 @@ export class Parser {
     }
     public matchvalue_literal_5($$dpth: number, $$cr?: ErrorTracker): Nullable<value_literal_5> {
         return this.matchliteral_null($$dpth + 1, $$cr);
+    }
+    public matchvalue_literal_6($$dpth: number, $$cr?: ErrorTracker): Nullable<value_literal_6> {
+        return this.matchquoted_string($$dpth + 1, $$cr);
     }
     public matchliteral_and($$dpth: number, $$cr?: ErrorTracker): Nullable<literal_and> {
         return this.run<literal_and>($$dpth,

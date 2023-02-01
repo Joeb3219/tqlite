@@ -1,7 +1,7 @@
 import { select_from_join } from '../parser-autogen/parser';
 import { ResultSet } from './QueryPlanner.types';
 
-type EvaluationCriterion = (a: any, b: any) => boolean;
+type EvaluationCriterion = (proposedRow: any) => boolean;
 
 export class QueryPlannerJoin {
     static innerJoin(setA: ResultSet, setB: ResultSet, evaluateCriterion: EvaluationCriterion): ResultSet {
@@ -9,8 +9,9 @@ export class QueryPlannerJoin {
 
         for (const rowA of setA) {
             for (const rowB of setB) {
-                if (evaluateCriterion(rowA, rowB)) {
-                    data.push({ ...rowA, ...rowB });
+                const proposedRow = { ...rowA, ...rowB };
+                if (evaluateCriterion(proposedRow)) {
+                    data.push(proposedRow);
                 }
             }    
         }
@@ -22,7 +23,7 @@ export class QueryPlannerJoin {
         const data: ResultSet = [];
 
         for (const rowA of setA) {
-            const rowB = setB.find(rowB => evaluateCriterion(rowA, rowB));
+            const rowB = setB.find(rowB => evaluateCriterion({ ...rowA, ...rowB }));
             data.push({ ...rowA, ...rowB });
         }
 

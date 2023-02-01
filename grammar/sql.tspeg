@@ -19,7 +19,7 @@ select_from_table_or_subquery := literal_open_paren table_or_subquery=select_fro
 select_from_join := table_a=select_from_table_or_subquery joins={ select_from_join_operator=select_from_join_operator select_from_table_or_subquery=select_from_table_or_subquery select_from_join_constraint=select_from_join_constraint?  }+
 
 column_name_list            :=      column=identifier other_columns={ literal_comma column=identifier }?
-select_from_join_constraint :=            on=literal_on expression=expression
+select_from_join_constraint :=            literal_on expression=expression
                                     |   literal_using literal_open_paren columns=column_name_list literal_close_paren
 
 select_from_join_operator :=          type=literal_natural? literal_join 
@@ -45,10 +45,11 @@ select_with := literal_with
 
 identifier :=  whitespace* value='[a-zA-Z][a-zA-Z0-9_]*'  whitespace*
 num := whitespace* value='[0-9]+'  whitespace*
+quoted_string := whitespace* value='"(?:[^"\\]|\\.)*"' whitespace* 
 
 unary_operator := literal_not
 binary_operator := literal_and | literal_or | literal_plus | literal_minus | literal_asterisk | literal_slash | literal_gte | literal_lte | literal_gt | literal_lt | literal_equal | literal_not_equal 
-value_literal := identifier | num | literal_true | literal_false | literal_null
+value_literal := identifier | num | literal_true | literal_false | literal_null | quoted_string
 
 literal_and :=  whitespace* literal='and' whitespace*
 literal_or :=  whitespace* literal='or' whitespace*
