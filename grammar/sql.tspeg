@@ -3,7 +3,7 @@ stmt_list := stmt=stmt other_stmts={ whitespace? literal_semi_colon stmt=stmt }*
 stmt := stmt_select
 stmt_select := select_with=select_with? select_core=select_core
 
-select_core := literal_select qualifier=select_qualifier? columns=select_result_column_list from=select_from?
+select_core := literal_select qualifier=select_qualifier? columns=select_result_column_list from=select_from? where=select_where?
 select_qualifier := literal_all | literal_distinct
 
 select_result_column_list := select_result_column=select_result_column other_result_columns={ whitespace? literal_comma select_result_column=select_result_column }*
@@ -29,17 +29,46 @@ select_from_join_operator :=          type=literal_natural? literal_join
                                     |   natural=literal_natural? type=literal_inner literal_join
                                     |   type=literal_cross literal_join
 
-select_where := expression
+select_where := literal_where expression=expression
 
-expression := 'foobar'
+expression := expression_front_recursive
+expression_column := schema_name={whitespace* schema_name=identifier literal_period} table_name={whitespace* table_name=identifier literal_period} column_name=identifier | table_name={whitespace* table_name=identifier literal_period}? column_name=identifier 
+expression_unary := unary_operator=unary_operator expression=expression
+expression_non_front_recursive := expression_column | expression_unary | value_literal
+
+expression_binary := expression_a=expression_non_front_recursive operator=binary_operator expression_b=expression
+expression_parens := literal_open_paren expression=expression_front_recursive literal_close_paren
+expression_front_recursive := expression_parens | expression_binary | expression_non_front_recursive
+
 
 select_with := literal_with
 
-identifier :=  whitespace* value='[a-zA-Z][a-zA-Z0-9]*'  whitespace*
+identifier :=  whitespace* value='[a-zA-Z][a-zA-Z0-9_]*'  whitespace*
+num := whitespace* value='[0-9]+'  whitespace*
 
-literal_comma :=  whitespace* ',' whitespace*
-literal_period :=  whitespace* '\.' whitespace*
-literal_asterisk :=  whitespace* '\*' whitespace*
+unary_operator := literal_not
+binary_operator := literal_and | literal_or | literal_plus | literal_minus | literal_asterisk | literal_slash | literal_gte | literal_lte | literal_gt | literal_lt | literal_equal | literal_not_equal 
+value_literal := identifier | num | literal_true | literal_false | literal_null
+
+literal_and :=  whitespace* literal='and' whitespace*
+literal_or :=  whitespace* literal='or' whitespace*
+literal_plus :=  whitespace* literal='\+' whitespace*
+literal_minus :=  whitespace* literal='-' whitespace*
+literal_slash :=  whitespace* literal='/' whitespace*
+literal_gte :=  whitespace* literal='>=' whitespace*
+literal_lte :=  whitespace* literal='<=' whitespace*
+literal_gt :=  whitespace* literal='>' whitespace*
+literal_lt :=  whitespace* literal='<' whitespace*
+literal_equal :=  whitespace* literal='=' whitespace*
+literal_not_equal :=  whitespace* literal='!=' whitespace* | whitespace* literal='<>' whitespace*
+literal_not :=  whitespace* literal='not' whitespace*
+literal_true :=  whitespace* literal='true' whitespace*
+literal_false :=  whitespace* literal='false' whitespace*
+literal_null :=  whitespace* literal='null' whitespace*
+
+literal_comma :=  whitespace* literal=',' whitespace*
+literal_period :=  whitespace* literal='\.' whitespace*
+literal_asterisk :=  whitespace* literal='\*' whitespace*
 literal_semi_colon :=  whitespace* literal=';' whitespace*
 literal_open_paren :=  whitespace* literal='\(' whitespace*
 literal_close_paren :=  whitespace* literal='\)' whitespace*
@@ -58,6 +87,7 @@ literal_join :=  whitespace* literal='join' whitespace*
 literal_from :=  whitespace* literal='from' whitespace*
 literal_with :=  whitespace* literal='with' whitespace*
 literal_select :=  whitespace* literal='select' whitespace*
+literal_where :=  whitespace* literal='where' whitespace*
 literal_all :=  whitespace* literal='all' whitespace*
 literal_distinct :=  whitespace* literal='distinct' whitespace*
 literal_as :=  whitespace* literal='as' whitespace*

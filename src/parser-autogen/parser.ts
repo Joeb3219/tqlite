@@ -43,8 +43,57 @@ export enum ASTKinds {
     select_from_join_operator_6 = "select_from_join_operator_6",
     select_where = "select_where",
     expression = "expression",
+    expression_column_1 = "expression_column_1",
+    expression_column_2 = "expression_column_2",
+    expression_column_$0 = "expression_column_$0",
+    expression_column_$1 = "expression_column_$1",
+    expression_column_$2 = "expression_column_$2",
+    expression_unary = "expression_unary",
+    expression_non_front_recursive_1 = "expression_non_front_recursive_1",
+    expression_non_front_recursive_2 = "expression_non_front_recursive_2",
+    expression_non_front_recursive_3 = "expression_non_front_recursive_3",
+    expression_binary = "expression_binary",
+    expression_parens = "expression_parens",
+    expression_front_recursive_1 = "expression_front_recursive_1",
+    expression_front_recursive_2 = "expression_front_recursive_2",
+    expression_front_recursive_3 = "expression_front_recursive_3",
     select_with = "select_with",
     identifier = "identifier",
+    num = "num",
+    unary_operator = "unary_operator",
+    binary_operator_1 = "binary_operator_1",
+    binary_operator_2 = "binary_operator_2",
+    binary_operator_3 = "binary_operator_3",
+    binary_operator_4 = "binary_operator_4",
+    binary_operator_5 = "binary_operator_5",
+    binary_operator_6 = "binary_operator_6",
+    binary_operator_7 = "binary_operator_7",
+    binary_operator_8 = "binary_operator_8",
+    binary_operator_9 = "binary_operator_9",
+    binary_operator_10 = "binary_operator_10",
+    binary_operator_11 = "binary_operator_11",
+    binary_operator_12 = "binary_operator_12",
+    value_literal_1 = "value_literal_1",
+    value_literal_2 = "value_literal_2",
+    value_literal_3 = "value_literal_3",
+    value_literal_4 = "value_literal_4",
+    value_literal_5 = "value_literal_5",
+    literal_and = "literal_and",
+    literal_or = "literal_or",
+    literal_plus = "literal_plus",
+    literal_minus = "literal_minus",
+    literal_slash = "literal_slash",
+    literal_gte = "literal_gte",
+    literal_lte = "literal_lte",
+    literal_gt = "literal_gt",
+    literal_lt = "literal_lt",
+    literal_equal = "literal_equal",
+    literal_not_equal_1 = "literal_not_equal_1",
+    literal_not_equal_2 = "literal_not_equal_2",
+    literal_not = "literal_not",
+    literal_true = "literal_true",
+    literal_false = "literal_false",
+    literal_null = "literal_null",
     literal_comma = "literal_comma",
     literal_period = "literal_period",
     literal_asterisk = "literal_asterisk",
@@ -64,6 +113,7 @@ export enum ASTKinds {
     literal_from = "literal_from",
     literal_with = "literal_with",
     literal_select = "literal_select",
+    literal_where = "literal_where",
     literal_all = "literal_all",
     literal_distinct = "literal_distinct",
     literal_as = "literal_as",
@@ -94,6 +144,7 @@ export interface select_core {
     qualifier: Nullable<select_qualifier>;
     columns: select_result_column_list;
     from: Nullable<select_from>;
+    where: Nullable<select_where>;
 }
 export type select_qualifier = select_qualifier_1 | select_qualifier_2;
 export type select_qualifier_1 = literal_all;
@@ -220,21 +271,163 @@ export interface select_from_join_operator_6 {
     kind: ASTKinds.select_from_join_operator_6;
     type: literal_cross;
 }
-export type select_where = expression;
-export type expression = string;
+export interface select_where {
+    kind: ASTKinds.select_where;
+    expression: expression;
+}
+export type expression = expression_front_recursive;
+export type expression_column = expression_column_1 | expression_column_2;
+export interface expression_column_1 {
+    kind: ASTKinds.expression_column_1;
+    schema_name: expression_column_$0;
+    table_name: expression_column_$1;
+    column_name: identifier;
+}
+export interface expression_column_2 {
+    kind: ASTKinds.expression_column_2;
+    table_name: Nullable<expression_column_$2>;
+    column_name: identifier;
+}
+export interface expression_column_$0 {
+    kind: ASTKinds.expression_column_$0;
+    schema_name: identifier;
+}
+export interface expression_column_$1 {
+    kind: ASTKinds.expression_column_$1;
+    table_name: identifier;
+}
+export interface expression_column_$2 {
+    kind: ASTKinds.expression_column_$2;
+    table_name: identifier;
+}
+export interface expression_unary {
+    kind: ASTKinds.expression_unary;
+    unary_operator: unary_operator;
+    expression: expression;
+}
+export type expression_non_front_recursive = expression_non_front_recursive_1 | expression_non_front_recursive_2 | expression_non_front_recursive_3;
+export type expression_non_front_recursive_1 = expression_column;
+export type expression_non_front_recursive_2 = expression_unary;
+export type expression_non_front_recursive_3 = value_literal;
+export interface expression_binary {
+    kind: ASTKinds.expression_binary;
+    expression_a: expression_non_front_recursive;
+    operator: binary_operator;
+    expression_b: expression;
+}
+export interface expression_parens {
+    kind: ASTKinds.expression_parens;
+    expression: expression_front_recursive;
+}
+export type expression_front_recursive = expression_front_recursive_1 | expression_front_recursive_2 | expression_front_recursive_3;
+export type expression_front_recursive_1 = expression_parens;
+export type expression_front_recursive_2 = expression_binary;
+export type expression_front_recursive_3 = expression_non_front_recursive;
 export type select_with = literal_with;
 export interface identifier {
     kind: ASTKinds.identifier;
     value: string;
 }
+export interface num {
+    kind: ASTKinds.num;
+    value: string;
+}
+export type unary_operator = literal_not;
+export type binary_operator = binary_operator_1 | binary_operator_2 | binary_operator_3 | binary_operator_4 | binary_operator_5 | binary_operator_6 | binary_operator_7 | binary_operator_8 | binary_operator_9 | binary_operator_10 | binary_operator_11 | binary_operator_12;
+export type binary_operator_1 = literal_and;
+export type binary_operator_2 = literal_or;
+export type binary_operator_3 = literal_plus;
+export type binary_operator_4 = literal_minus;
+export type binary_operator_5 = literal_asterisk;
+export type binary_operator_6 = literal_slash;
+export type binary_operator_7 = literal_gte;
+export type binary_operator_8 = literal_lte;
+export type binary_operator_9 = literal_gt;
+export type binary_operator_10 = literal_lt;
+export type binary_operator_11 = literal_equal;
+export type binary_operator_12 = literal_not_equal;
+export type value_literal = value_literal_1 | value_literal_2 | value_literal_3 | value_literal_4 | value_literal_5;
+export type value_literal_1 = identifier;
+export type value_literal_2 = num;
+export type value_literal_3 = literal_true;
+export type value_literal_4 = literal_false;
+export type value_literal_5 = literal_null;
+export interface literal_and {
+    kind: ASTKinds.literal_and;
+    literal: string;
+}
+export interface literal_or {
+    kind: ASTKinds.literal_or;
+    literal: string;
+}
+export interface literal_plus {
+    kind: ASTKinds.literal_plus;
+    literal: string;
+}
+export interface literal_minus {
+    kind: ASTKinds.literal_minus;
+    literal: string;
+}
+export interface literal_slash {
+    kind: ASTKinds.literal_slash;
+    literal: string;
+}
+export interface literal_gte {
+    kind: ASTKinds.literal_gte;
+    literal: string;
+}
+export interface literal_lte {
+    kind: ASTKinds.literal_lte;
+    literal: string;
+}
+export interface literal_gt {
+    kind: ASTKinds.literal_gt;
+    literal: string;
+}
+export interface literal_lt {
+    kind: ASTKinds.literal_lt;
+    literal: string;
+}
+export interface literal_equal {
+    kind: ASTKinds.literal_equal;
+    literal: string;
+}
+export type literal_not_equal = literal_not_equal_1 | literal_not_equal_2;
+export interface literal_not_equal_1 {
+    kind: ASTKinds.literal_not_equal_1;
+    literal: string;
+}
+export interface literal_not_equal_2 {
+    kind: ASTKinds.literal_not_equal_2;
+    literal: string;
+}
+export interface literal_not {
+    kind: ASTKinds.literal_not;
+    literal: string;
+}
+export interface literal_true {
+    kind: ASTKinds.literal_true;
+    literal: string;
+}
+export interface literal_false {
+    kind: ASTKinds.literal_false;
+    literal: string;
+}
+export interface literal_null {
+    kind: ASTKinds.literal_null;
+    literal: string;
+}
 export interface literal_comma {
     kind: ASTKinds.literal_comma;
+    literal: string;
 }
 export interface literal_period {
     kind: ASTKinds.literal_period;
+    literal: string;
 }
 export interface literal_asterisk {
     kind: ASTKinds.literal_asterisk;
+    literal: string;
 }
 export interface literal_semi_colon {
     kind: ASTKinds.literal_semi_colon;
@@ -298,6 +491,10 @@ export interface literal_with {
 }
 export interface literal_select {
     kind: ASTKinds.literal_select;
+    literal: string;
+}
+export interface literal_where {
+    kind: ASTKinds.literal_where;
     literal: string;
 }
 export interface literal_all {
@@ -399,14 +596,16 @@ export class Parser {
                 let $scope$qualifier: Nullable<Nullable<select_qualifier>>;
                 let $scope$columns: Nullable<select_result_column_list>;
                 let $scope$from: Nullable<Nullable<select_from>>;
+                let $scope$where: Nullable<Nullable<select_where>>;
                 let $$res: Nullable<select_core> = null;
                 if (true
                     && this.matchliteral_select($$dpth + 1, $$cr) !== null
                     && (($scope$qualifier = this.matchselect_qualifier($$dpth + 1, $$cr)) || true)
                     && ($scope$columns = this.matchselect_result_column_list($$dpth + 1, $$cr)) !== null
                     && (($scope$from = this.matchselect_from($$dpth + 1, $$cr)) || true)
+                    && (($scope$where = this.matchselect_where($$dpth + 1, $$cr)) || true)
                 ) {
-                    $$res = {kind: ASTKinds.select_core, qualifier: $scope$qualifier, columns: $scope$columns, from: $scope$from};
+                    $$res = {kind: ASTKinds.select_core, qualifier: $scope$qualifier, columns: $scope$columns, from: $scope$from, where: $scope$where};
                 }
                 return $$res;
             });
@@ -846,10 +1045,183 @@ export class Parser {
             });
     }
     public matchselect_where($$dpth: number, $$cr?: ErrorTracker): Nullable<select_where> {
-        return this.matchexpression($$dpth + 1, $$cr);
+        return this.run<select_where>($$dpth,
+            () => {
+                let $scope$expression: Nullable<expression>;
+                let $$res: Nullable<select_where> = null;
+                if (true
+                    && this.matchliteral_where($$dpth + 1, $$cr) !== null
+                    && ($scope$expression = this.matchexpression($$dpth + 1, $$cr)) !== null
+                ) {
+                    $$res = {kind: ASTKinds.select_where, expression: $scope$expression};
+                }
+                return $$res;
+            });
     }
     public matchexpression($$dpth: number, $$cr?: ErrorTracker): Nullable<expression> {
-        return this.regexAccept(String.raw`(?:foobar)`, $$dpth + 1, $$cr);
+        return this.matchexpression_front_recursive($$dpth + 1, $$cr);
+    }
+    public matchexpression_column($$dpth: number, $$cr?: ErrorTracker): Nullable<expression_column> {
+        return this.choice<expression_column>([
+            () => this.matchexpression_column_1($$dpth + 1, $$cr),
+            () => this.matchexpression_column_2($$dpth + 1, $$cr),
+        ]);
+    }
+    public matchexpression_column_1($$dpth: number, $$cr?: ErrorTracker): Nullable<expression_column_1> {
+        return this.run<expression_column_1>($$dpth,
+            () => {
+                let $scope$schema_name: Nullable<expression_column_$0>;
+                let $scope$table_name: Nullable<expression_column_$1>;
+                let $scope$column_name: Nullable<identifier>;
+                let $$res: Nullable<expression_column_1> = null;
+                if (true
+                    && ($scope$schema_name = this.matchexpression_column_$0($$dpth + 1, $$cr)) !== null
+                    && ($scope$table_name = this.matchexpression_column_$1($$dpth + 1, $$cr)) !== null
+                    && ($scope$column_name = this.matchidentifier($$dpth + 1, $$cr)) !== null
+                ) {
+                    $$res = {kind: ASTKinds.expression_column_1, schema_name: $scope$schema_name, table_name: $scope$table_name, column_name: $scope$column_name};
+                }
+                return $$res;
+            });
+    }
+    public matchexpression_column_2($$dpth: number, $$cr?: ErrorTracker): Nullable<expression_column_2> {
+        return this.run<expression_column_2>($$dpth,
+            () => {
+                let $scope$table_name: Nullable<Nullable<expression_column_$2>>;
+                let $scope$column_name: Nullable<identifier>;
+                let $$res: Nullable<expression_column_2> = null;
+                if (true
+                    && (($scope$table_name = this.matchexpression_column_$2($$dpth + 1, $$cr)) || true)
+                    && ($scope$column_name = this.matchidentifier($$dpth + 1, $$cr)) !== null
+                ) {
+                    $$res = {kind: ASTKinds.expression_column_2, table_name: $scope$table_name, column_name: $scope$column_name};
+                }
+                return $$res;
+            });
+    }
+    public matchexpression_column_$0($$dpth: number, $$cr?: ErrorTracker): Nullable<expression_column_$0> {
+        return this.run<expression_column_$0>($$dpth,
+            () => {
+                let $scope$schema_name: Nullable<identifier>;
+                let $$res: Nullable<expression_column_$0> = null;
+                if (true
+                    && this.loop<whitespace>(() => this.matchwhitespace($$dpth + 1, $$cr), true) !== null
+                    && ($scope$schema_name = this.matchidentifier($$dpth + 1, $$cr)) !== null
+                    && this.matchliteral_period($$dpth + 1, $$cr) !== null
+                ) {
+                    $$res = {kind: ASTKinds.expression_column_$0, schema_name: $scope$schema_name};
+                }
+                return $$res;
+            });
+    }
+    public matchexpression_column_$1($$dpth: number, $$cr?: ErrorTracker): Nullable<expression_column_$1> {
+        return this.run<expression_column_$1>($$dpth,
+            () => {
+                let $scope$table_name: Nullable<identifier>;
+                let $$res: Nullable<expression_column_$1> = null;
+                if (true
+                    && this.loop<whitespace>(() => this.matchwhitespace($$dpth + 1, $$cr), true) !== null
+                    && ($scope$table_name = this.matchidentifier($$dpth + 1, $$cr)) !== null
+                    && this.matchliteral_period($$dpth + 1, $$cr) !== null
+                ) {
+                    $$res = {kind: ASTKinds.expression_column_$1, table_name: $scope$table_name};
+                }
+                return $$res;
+            });
+    }
+    public matchexpression_column_$2($$dpth: number, $$cr?: ErrorTracker): Nullable<expression_column_$2> {
+        return this.run<expression_column_$2>($$dpth,
+            () => {
+                let $scope$table_name: Nullable<identifier>;
+                let $$res: Nullable<expression_column_$2> = null;
+                if (true
+                    && this.loop<whitespace>(() => this.matchwhitespace($$dpth + 1, $$cr), true) !== null
+                    && ($scope$table_name = this.matchidentifier($$dpth + 1, $$cr)) !== null
+                    && this.matchliteral_period($$dpth + 1, $$cr) !== null
+                ) {
+                    $$res = {kind: ASTKinds.expression_column_$2, table_name: $scope$table_name};
+                }
+                return $$res;
+            });
+    }
+    public matchexpression_unary($$dpth: number, $$cr?: ErrorTracker): Nullable<expression_unary> {
+        return this.run<expression_unary>($$dpth,
+            () => {
+                let $scope$unary_operator: Nullable<unary_operator>;
+                let $scope$expression: Nullable<expression>;
+                let $$res: Nullable<expression_unary> = null;
+                if (true
+                    && ($scope$unary_operator = this.matchunary_operator($$dpth + 1, $$cr)) !== null
+                    && ($scope$expression = this.matchexpression($$dpth + 1, $$cr)) !== null
+                ) {
+                    $$res = {kind: ASTKinds.expression_unary, unary_operator: $scope$unary_operator, expression: $scope$expression};
+                }
+                return $$res;
+            });
+    }
+    public matchexpression_non_front_recursive($$dpth: number, $$cr?: ErrorTracker): Nullable<expression_non_front_recursive> {
+        return this.choice<expression_non_front_recursive>([
+            () => this.matchexpression_non_front_recursive_1($$dpth + 1, $$cr),
+            () => this.matchexpression_non_front_recursive_2($$dpth + 1, $$cr),
+            () => this.matchexpression_non_front_recursive_3($$dpth + 1, $$cr),
+        ]);
+    }
+    public matchexpression_non_front_recursive_1($$dpth: number, $$cr?: ErrorTracker): Nullable<expression_non_front_recursive_1> {
+        return this.matchexpression_column($$dpth + 1, $$cr);
+    }
+    public matchexpression_non_front_recursive_2($$dpth: number, $$cr?: ErrorTracker): Nullable<expression_non_front_recursive_2> {
+        return this.matchexpression_unary($$dpth + 1, $$cr);
+    }
+    public matchexpression_non_front_recursive_3($$dpth: number, $$cr?: ErrorTracker): Nullable<expression_non_front_recursive_3> {
+        return this.matchvalue_literal($$dpth + 1, $$cr);
+    }
+    public matchexpression_binary($$dpth: number, $$cr?: ErrorTracker): Nullable<expression_binary> {
+        return this.run<expression_binary>($$dpth,
+            () => {
+                let $scope$expression_a: Nullable<expression_non_front_recursive>;
+                let $scope$operator: Nullable<binary_operator>;
+                let $scope$expression_b: Nullable<expression>;
+                let $$res: Nullable<expression_binary> = null;
+                if (true
+                    && ($scope$expression_a = this.matchexpression_non_front_recursive($$dpth + 1, $$cr)) !== null
+                    && ($scope$operator = this.matchbinary_operator($$dpth + 1, $$cr)) !== null
+                    && ($scope$expression_b = this.matchexpression($$dpth + 1, $$cr)) !== null
+                ) {
+                    $$res = {kind: ASTKinds.expression_binary, expression_a: $scope$expression_a, operator: $scope$operator, expression_b: $scope$expression_b};
+                }
+                return $$res;
+            });
+    }
+    public matchexpression_parens($$dpth: number, $$cr?: ErrorTracker): Nullable<expression_parens> {
+        return this.run<expression_parens>($$dpth,
+            () => {
+                let $scope$expression: Nullable<expression_front_recursive>;
+                let $$res: Nullable<expression_parens> = null;
+                if (true
+                    && this.matchliteral_open_paren($$dpth + 1, $$cr) !== null
+                    && ($scope$expression = this.matchexpression_front_recursive($$dpth + 1, $$cr)) !== null
+                    && this.matchliteral_close_paren($$dpth + 1, $$cr) !== null
+                ) {
+                    $$res = {kind: ASTKinds.expression_parens, expression: $scope$expression};
+                }
+                return $$res;
+            });
+    }
+    public matchexpression_front_recursive($$dpth: number, $$cr?: ErrorTracker): Nullable<expression_front_recursive> {
+        return this.choice<expression_front_recursive>([
+            () => this.matchexpression_front_recursive_1($$dpth + 1, $$cr),
+            () => this.matchexpression_front_recursive_2($$dpth + 1, $$cr),
+            () => this.matchexpression_front_recursive_3($$dpth + 1, $$cr),
+        ]);
+    }
+    public matchexpression_front_recursive_1($$dpth: number, $$cr?: ErrorTracker): Nullable<expression_front_recursive_1> {
+        return this.matchexpression_parens($$dpth + 1, $$cr);
+    }
+    public matchexpression_front_recursive_2($$dpth: number, $$cr?: ErrorTracker): Nullable<expression_front_recursive_2> {
+        return this.matchexpression_binary($$dpth + 1, $$cr);
+    }
+    public matchexpression_front_recursive_3($$dpth: number, $$cr?: ErrorTracker): Nullable<expression_front_recursive_3> {
+        return this.matchexpression_non_front_recursive($$dpth + 1, $$cr);
     }
     public matchselect_with($$dpth: number, $$cr?: ErrorTracker): Nullable<select_with> {
         return this.matchliteral_with($$dpth + 1, $$cr);
@@ -861,7 +1233,7 @@ export class Parser {
                 let $$res: Nullable<identifier> = null;
                 if (true
                     && this.loop<whitespace>(() => this.matchwhitespace($$dpth + 1, $$cr), true) !== null
-                    && ($scope$value = this.regexAccept(String.raw`(?:[a-zA-Z][a-zA-Z0-9]*)`, $$dpth + 1, $$cr)) !== null
+                    && ($scope$value = this.regexAccept(String.raw`(?:[a-zA-Z][a-zA-Z0-9_]*)`, $$dpth + 1, $$cr)) !== null
                     && this.loop<whitespace>(() => this.matchwhitespace($$dpth + 1, $$cr), true) !== null
                 ) {
                     $$res = {kind: ASTKinds.identifier, value: $scope$value};
@@ -869,16 +1241,357 @@ export class Parser {
                 return $$res;
             });
     }
+    public matchnum($$dpth: number, $$cr?: ErrorTracker): Nullable<num> {
+        return this.run<num>($$dpth,
+            () => {
+                let $scope$value: Nullable<string>;
+                let $$res: Nullable<num> = null;
+                if (true
+                    && this.loop<whitespace>(() => this.matchwhitespace($$dpth + 1, $$cr), true) !== null
+                    && ($scope$value = this.regexAccept(String.raw`(?:[0-9]+)`, $$dpth + 1, $$cr)) !== null
+                    && this.loop<whitespace>(() => this.matchwhitespace($$dpth + 1, $$cr), true) !== null
+                ) {
+                    $$res = {kind: ASTKinds.num, value: $scope$value};
+                }
+                return $$res;
+            });
+    }
+    public matchunary_operator($$dpth: number, $$cr?: ErrorTracker): Nullable<unary_operator> {
+        return this.matchliteral_not($$dpth + 1, $$cr);
+    }
+    public matchbinary_operator($$dpth: number, $$cr?: ErrorTracker): Nullable<binary_operator> {
+        return this.choice<binary_operator>([
+            () => this.matchbinary_operator_1($$dpth + 1, $$cr),
+            () => this.matchbinary_operator_2($$dpth + 1, $$cr),
+            () => this.matchbinary_operator_3($$dpth + 1, $$cr),
+            () => this.matchbinary_operator_4($$dpth + 1, $$cr),
+            () => this.matchbinary_operator_5($$dpth + 1, $$cr),
+            () => this.matchbinary_operator_6($$dpth + 1, $$cr),
+            () => this.matchbinary_operator_7($$dpth + 1, $$cr),
+            () => this.matchbinary_operator_8($$dpth + 1, $$cr),
+            () => this.matchbinary_operator_9($$dpth + 1, $$cr),
+            () => this.matchbinary_operator_10($$dpth + 1, $$cr),
+            () => this.matchbinary_operator_11($$dpth + 1, $$cr),
+            () => this.matchbinary_operator_12($$dpth + 1, $$cr),
+        ]);
+    }
+    public matchbinary_operator_1($$dpth: number, $$cr?: ErrorTracker): Nullable<binary_operator_1> {
+        return this.matchliteral_and($$dpth + 1, $$cr);
+    }
+    public matchbinary_operator_2($$dpth: number, $$cr?: ErrorTracker): Nullable<binary_operator_2> {
+        return this.matchliteral_or($$dpth + 1, $$cr);
+    }
+    public matchbinary_operator_3($$dpth: number, $$cr?: ErrorTracker): Nullable<binary_operator_3> {
+        return this.matchliteral_plus($$dpth + 1, $$cr);
+    }
+    public matchbinary_operator_4($$dpth: number, $$cr?: ErrorTracker): Nullable<binary_operator_4> {
+        return this.matchliteral_minus($$dpth + 1, $$cr);
+    }
+    public matchbinary_operator_5($$dpth: number, $$cr?: ErrorTracker): Nullable<binary_operator_5> {
+        return this.matchliteral_asterisk($$dpth + 1, $$cr);
+    }
+    public matchbinary_operator_6($$dpth: number, $$cr?: ErrorTracker): Nullable<binary_operator_6> {
+        return this.matchliteral_slash($$dpth + 1, $$cr);
+    }
+    public matchbinary_operator_7($$dpth: number, $$cr?: ErrorTracker): Nullable<binary_operator_7> {
+        return this.matchliteral_gte($$dpth + 1, $$cr);
+    }
+    public matchbinary_operator_8($$dpth: number, $$cr?: ErrorTracker): Nullable<binary_operator_8> {
+        return this.matchliteral_lte($$dpth + 1, $$cr);
+    }
+    public matchbinary_operator_9($$dpth: number, $$cr?: ErrorTracker): Nullable<binary_operator_9> {
+        return this.matchliteral_gt($$dpth + 1, $$cr);
+    }
+    public matchbinary_operator_10($$dpth: number, $$cr?: ErrorTracker): Nullable<binary_operator_10> {
+        return this.matchliteral_lt($$dpth + 1, $$cr);
+    }
+    public matchbinary_operator_11($$dpth: number, $$cr?: ErrorTracker): Nullable<binary_operator_11> {
+        return this.matchliteral_equal($$dpth + 1, $$cr);
+    }
+    public matchbinary_operator_12($$dpth: number, $$cr?: ErrorTracker): Nullable<binary_operator_12> {
+        return this.matchliteral_not_equal($$dpth + 1, $$cr);
+    }
+    public matchvalue_literal($$dpth: number, $$cr?: ErrorTracker): Nullable<value_literal> {
+        return this.choice<value_literal>([
+            () => this.matchvalue_literal_1($$dpth + 1, $$cr),
+            () => this.matchvalue_literal_2($$dpth + 1, $$cr),
+            () => this.matchvalue_literal_3($$dpth + 1, $$cr),
+            () => this.matchvalue_literal_4($$dpth + 1, $$cr),
+            () => this.matchvalue_literal_5($$dpth + 1, $$cr),
+        ]);
+    }
+    public matchvalue_literal_1($$dpth: number, $$cr?: ErrorTracker): Nullable<value_literal_1> {
+        return this.matchidentifier($$dpth + 1, $$cr);
+    }
+    public matchvalue_literal_2($$dpth: number, $$cr?: ErrorTracker): Nullable<value_literal_2> {
+        return this.matchnum($$dpth + 1, $$cr);
+    }
+    public matchvalue_literal_3($$dpth: number, $$cr?: ErrorTracker): Nullable<value_literal_3> {
+        return this.matchliteral_true($$dpth + 1, $$cr);
+    }
+    public matchvalue_literal_4($$dpth: number, $$cr?: ErrorTracker): Nullable<value_literal_4> {
+        return this.matchliteral_false($$dpth + 1, $$cr);
+    }
+    public matchvalue_literal_5($$dpth: number, $$cr?: ErrorTracker): Nullable<value_literal_5> {
+        return this.matchliteral_null($$dpth + 1, $$cr);
+    }
+    public matchliteral_and($$dpth: number, $$cr?: ErrorTracker): Nullable<literal_and> {
+        return this.run<literal_and>($$dpth,
+            () => {
+                let $scope$literal: Nullable<string>;
+                let $$res: Nullable<literal_and> = null;
+                if (true
+                    && this.loop<whitespace>(() => this.matchwhitespace($$dpth + 1, $$cr), true) !== null
+                    && ($scope$literal = this.regexAccept(String.raw`(?:and)`, $$dpth + 1, $$cr)) !== null
+                    && this.loop<whitespace>(() => this.matchwhitespace($$dpth + 1, $$cr), true) !== null
+                ) {
+                    $$res = {kind: ASTKinds.literal_and, literal: $scope$literal};
+                }
+                return $$res;
+            });
+    }
+    public matchliteral_or($$dpth: number, $$cr?: ErrorTracker): Nullable<literal_or> {
+        return this.run<literal_or>($$dpth,
+            () => {
+                let $scope$literal: Nullable<string>;
+                let $$res: Nullable<literal_or> = null;
+                if (true
+                    && this.loop<whitespace>(() => this.matchwhitespace($$dpth + 1, $$cr), true) !== null
+                    && ($scope$literal = this.regexAccept(String.raw`(?:or)`, $$dpth + 1, $$cr)) !== null
+                    && this.loop<whitespace>(() => this.matchwhitespace($$dpth + 1, $$cr), true) !== null
+                ) {
+                    $$res = {kind: ASTKinds.literal_or, literal: $scope$literal};
+                }
+                return $$res;
+            });
+    }
+    public matchliteral_plus($$dpth: number, $$cr?: ErrorTracker): Nullable<literal_plus> {
+        return this.run<literal_plus>($$dpth,
+            () => {
+                let $scope$literal: Nullable<string>;
+                let $$res: Nullable<literal_plus> = null;
+                if (true
+                    && this.loop<whitespace>(() => this.matchwhitespace($$dpth + 1, $$cr), true) !== null
+                    && ($scope$literal = this.regexAccept(String.raw`(?:\+)`, $$dpth + 1, $$cr)) !== null
+                    && this.loop<whitespace>(() => this.matchwhitespace($$dpth + 1, $$cr), true) !== null
+                ) {
+                    $$res = {kind: ASTKinds.literal_plus, literal: $scope$literal};
+                }
+                return $$res;
+            });
+    }
+    public matchliteral_minus($$dpth: number, $$cr?: ErrorTracker): Nullable<literal_minus> {
+        return this.run<literal_minus>($$dpth,
+            () => {
+                let $scope$literal: Nullable<string>;
+                let $$res: Nullable<literal_minus> = null;
+                if (true
+                    && this.loop<whitespace>(() => this.matchwhitespace($$dpth + 1, $$cr), true) !== null
+                    && ($scope$literal = this.regexAccept(String.raw`(?:-)`, $$dpth + 1, $$cr)) !== null
+                    && this.loop<whitespace>(() => this.matchwhitespace($$dpth + 1, $$cr), true) !== null
+                ) {
+                    $$res = {kind: ASTKinds.literal_minus, literal: $scope$literal};
+                }
+                return $$res;
+            });
+    }
+    public matchliteral_slash($$dpth: number, $$cr?: ErrorTracker): Nullable<literal_slash> {
+        return this.run<literal_slash>($$dpth,
+            () => {
+                let $scope$literal: Nullable<string>;
+                let $$res: Nullable<literal_slash> = null;
+                if (true
+                    && this.loop<whitespace>(() => this.matchwhitespace($$dpth + 1, $$cr), true) !== null
+                    && ($scope$literal = this.regexAccept(String.raw`(?:/)`, $$dpth + 1, $$cr)) !== null
+                    && this.loop<whitespace>(() => this.matchwhitespace($$dpth + 1, $$cr), true) !== null
+                ) {
+                    $$res = {kind: ASTKinds.literal_slash, literal: $scope$literal};
+                }
+                return $$res;
+            });
+    }
+    public matchliteral_gte($$dpth: number, $$cr?: ErrorTracker): Nullable<literal_gte> {
+        return this.run<literal_gte>($$dpth,
+            () => {
+                let $scope$literal: Nullable<string>;
+                let $$res: Nullable<literal_gte> = null;
+                if (true
+                    && this.loop<whitespace>(() => this.matchwhitespace($$dpth + 1, $$cr), true) !== null
+                    && ($scope$literal = this.regexAccept(String.raw`(?:>=)`, $$dpth + 1, $$cr)) !== null
+                    && this.loop<whitespace>(() => this.matchwhitespace($$dpth + 1, $$cr), true) !== null
+                ) {
+                    $$res = {kind: ASTKinds.literal_gte, literal: $scope$literal};
+                }
+                return $$res;
+            });
+    }
+    public matchliteral_lte($$dpth: number, $$cr?: ErrorTracker): Nullable<literal_lte> {
+        return this.run<literal_lte>($$dpth,
+            () => {
+                let $scope$literal: Nullable<string>;
+                let $$res: Nullable<literal_lte> = null;
+                if (true
+                    && this.loop<whitespace>(() => this.matchwhitespace($$dpth + 1, $$cr), true) !== null
+                    && ($scope$literal = this.regexAccept(String.raw`(?:<=)`, $$dpth + 1, $$cr)) !== null
+                    && this.loop<whitespace>(() => this.matchwhitespace($$dpth + 1, $$cr), true) !== null
+                ) {
+                    $$res = {kind: ASTKinds.literal_lte, literal: $scope$literal};
+                }
+                return $$res;
+            });
+    }
+    public matchliteral_gt($$dpth: number, $$cr?: ErrorTracker): Nullable<literal_gt> {
+        return this.run<literal_gt>($$dpth,
+            () => {
+                let $scope$literal: Nullable<string>;
+                let $$res: Nullable<literal_gt> = null;
+                if (true
+                    && this.loop<whitespace>(() => this.matchwhitespace($$dpth + 1, $$cr), true) !== null
+                    && ($scope$literal = this.regexAccept(String.raw`(?:>)`, $$dpth + 1, $$cr)) !== null
+                    && this.loop<whitespace>(() => this.matchwhitespace($$dpth + 1, $$cr), true) !== null
+                ) {
+                    $$res = {kind: ASTKinds.literal_gt, literal: $scope$literal};
+                }
+                return $$res;
+            });
+    }
+    public matchliteral_lt($$dpth: number, $$cr?: ErrorTracker): Nullable<literal_lt> {
+        return this.run<literal_lt>($$dpth,
+            () => {
+                let $scope$literal: Nullable<string>;
+                let $$res: Nullable<literal_lt> = null;
+                if (true
+                    && this.loop<whitespace>(() => this.matchwhitespace($$dpth + 1, $$cr), true) !== null
+                    && ($scope$literal = this.regexAccept(String.raw`(?:<)`, $$dpth + 1, $$cr)) !== null
+                    && this.loop<whitespace>(() => this.matchwhitespace($$dpth + 1, $$cr), true) !== null
+                ) {
+                    $$res = {kind: ASTKinds.literal_lt, literal: $scope$literal};
+                }
+                return $$res;
+            });
+    }
+    public matchliteral_equal($$dpth: number, $$cr?: ErrorTracker): Nullable<literal_equal> {
+        return this.run<literal_equal>($$dpth,
+            () => {
+                let $scope$literal: Nullable<string>;
+                let $$res: Nullable<literal_equal> = null;
+                if (true
+                    && this.loop<whitespace>(() => this.matchwhitespace($$dpth + 1, $$cr), true) !== null
+                    && ($scope$literal = this.regexAccept(String.raw`(?:=)`, $$dpth + 1, $$cr)) !== null
+                    && this.loop<whitespace>(() => this.matchwhitespace($$dpth + 1, $$cr), true) !== null
+                ) {
+                    $$res = {kind: ASTKinds.literal_equal, literal: $scope$literal};
+                }
+                return $$res;
+            });
+    }
+    public matchliteral_not_equal($$dpth: number, $$cr?: ErrorTracker): Nullable<literal_not_equal> {
+        return this.choice<literal_not_equal>([
+            () => this.matchliteral_not_equal_1($$dpth + 1, $$cr),
+            () => this.matchliteral_not_equal_2($$dpth + 1, $$cr),
+        ]);
+    }
+    public matchliteral_not_equal_1($$dpth: number, $$cr?: ErrorTracker): Nullable<literal_not_equal_1> {
+        return this.run<literal_not_equal_1>($$dpth,
+            () => {
+                let $scope$literal: Nullable<string>;
+                let $$res: Nullable<literal_not_equal_1> = null;
+                if (true
+                    && this.loop<whitespace>(() => this.matchwhitespace($$dpth + 1, $$cr), true) !== null
+                    && ($scope$literal = this.regexAccept(String.raw`(?:!=)`, $$dpth + 1, $$cr)) !== null
+                    && this.loop<whitespace>(() => this.matchwhitespace($$dpth + 1, $$cr), true) !== null
+                ) {
+                    $$res = {kind: ASTKinds.literal_not_equal_1, literal: $scope$literal};
+                }
+                return $$res;
+            });
+    }
+    public matchliteral_not_equal_2($$dpth: number, $$cr?: ErrorTracker): Nullable<literal_not_equal_2> {
+        return this.run<literal_not_equal_2>($$dpth,
+            () => {
+                let $scope$literal: Nullable<string>;
+                let $$res: Nullable<literal_not_equal_2> = null;
+                if (true
+                    && this.loop<whitespace>(() => this.matchwhitespace($$dpth + 1, $$cr), true) !== null
+                    && ($scope$literal = this.regexAccept(String.raw`(?:<>)`, $$dpth + 1, $$cr)) !== null
+                    && this.loop<whitespace>(() => this.matchwhitespace($$dpth + 1, $$cr), true) !== null
+                ) {
+                    $$res = {kind: ASTKinds.literal_not_equal_2, literal: $scope$literal};
+                }
+                return $$res;
+            });
+    }
+    public matchliteral_not($$dpth: number, $$cr?: ErrorTracker): Nullable<literal_not> {
+        return this.run<literal_not>($$dpth,
+            () => {
+                let $scope$literal: Nullable<string>;
+                let $$res: Nullable<literal_not> = null;
+                if (true
+                    && this.loop<whitespace>(() => this.matchwhitespace($$dpth + 1, $$cr), true) !== null
+                    && ($scope$literal = this.regexAccept(String.raw`(?:not)`, $$dpth + 1, $$cr)) !== null
+                    && this.loop<whitespace>(() => this.matchwhitespace($$dpth + 1, $$cr), true) !== null
+                ) {
+                    $$res = {kind: ASTKinds.literal_not, literal: $scope$literal};
+                }
+                return $$res;
+            });
+    }
+    public matchliteral_true($$dpth: number, $$cr?: ErrorTracker): Nullable<literal_true> {
+        return this.run<literal_true>($$dpth,
+            () => {
+                let $scope$literal: Nullable<string>;
+                let $$res: Nullable<literal_true> = null;
+                if (true
+                    && this.loop<whitespace>(() => this.matchwhitespace($$dpth + 1, $$cr), true) !== null
+                    && ($scope$literal = this.regexAccept(String.raw`(?:true)`, $$dpth + 1, $$cr)) !== null
+                    && this.loop<whitespace>(() => this.matchwhitespace($$dpth + 1, $$cr), true) !== null
+                ) {
+                    $$res = {kind: ASTKinds.literal_true, literal: $scope$literal};
+                }
+                return $$res;
+            });
+    }
+    public matchliteral_false($$dpth: number, $$cr?: ErrorTracker): Nullable<literal_false> {
+        return this.run<literal_false>($$dpth,
+            () => {
+                let $scope$literal: Nullable<string>;
+                let $$res: Nullable<literal_false> = null;
+                if (true
+                    && this.loop<whitespace>(() => this.matchwhitespace($$dpth + 1, $$cr), true) !== null
+                    && ($scope$literal = this.regexAccept(String.raw`(?:false)`, $$dpth + 1, $$cr)) !== null
+                    && this.loop<whitespace>(() => this.matchwhitespace($$dpth + 1, $$cr), true) !== null
+                ) {
+                    $$res = {kind: ASTKinds.literal_false, literal: $scope$literal};
+                }
+                return $$res;
+            });
+    }
+    public matchliteral_null($$dpth: number, $$cr?: ErrorTracker): Nullable<literal_null> {
+        return this.run<literal_null>($$dpth,
+            () => {
+                let $scope$literal: Nullable<string>;
+                let $$res: Nullable<literal_null> = null;
+                if (true
+                    && this.loop<whitespace>(() => this.matchwhitespace($$dpth + 1, $$cr), true) !== null
+                    && ($scope$literal = this.regexAccept(String.raw`(?:null)`, $$dpth + 1, $$cr)) !== null
+                    && this.loop<whitespace>(() => this.matchwhitespace($$dpth + 1, $$cr), true) !== null
+                ) {
+                    $$res = {kind: ASTKinds.literal_null, literal: $scope$literal};
+                }
+                return $$res;
+            });
+    }
     public matchliteral_comma($$dpth: number, $$cr?: ErrorTracker): Nullable<literal_comma> {
         return this.run<literal_comma>($$dpth,
             () => {
+                let $scope$literal: Nullable<string>;
                 let $$res: Nullable<literal_comma> = null;
                 if (true
                     && this.loop<whitespace>(() => this.matchwhitespace($$dpth + 1, $$cr), true) !== null
-                    && this.regexAccept(String.raw`(?:,)`, $$dpth + 1, $$cr) !== null
+                    && ($scope$literal = this.regexAccept(String.raw`(?:,)`, $$dpth + 1, $$cr)) !== null
                     && this.loop<whitespace>(() => this.matchwhitespace($$dpth + 1, $$cr), true) !== null
                 ) {
-                    $$res = {kind: ASTKinds.literal_comma, };
+                    $$res = {kind: ASTKinds.literal_comma, literal: $scope$literal};
                 }
                 return $$res;
             });
@@ -886,13 +1599,14 @@ export class Parser {
     public matchliteral_period($$dpth: number, $$cr?: ErrorTracker): Nullable<literal_period> {
         return this.run<literal_period>($$dpth,
             () => {
+                let $scope$literal: Nullable<string>;
                 let $$res: Nullable<literal_period> = null;
                 if (true
                     && this.loop<whitespace>(() => this.matchwhitespace($$dpth + 1, $$cr), true) !== null
-                    && this.regexAccept(String.raw`(?:\.)`, $$dpth + 1, $$cr) !== null
+                    && ($scope$literal = this.regexAccept(String.raw`(?:\.)`, $$dpth + 1, $$cr)) !== null
                     && this.loop<whitespace>(() => this.matchwhitespace($$dpth + 1, $$cr), true) !== null
                 ) {
-                    $$res = {kind: ASTKinds.literal_period, };
+                    $$res = {kind: ASTKinds.literal_period, literal: $scope$literal};
                 }
                 return $$res;
             });
@@ -900,13 +1614,14 @@ export class Parser {
     public matchliteral_asterisk($$dpth: number, $$cr?: ErrorTracker): Nullable<literal_asterisk> {
         return this.run<literal_asterisk>($$dpth,
             () => {
+                let $scope$literal: Nullable<string>;
                 let $$res: Nullable<literal_asterisk> = null;
                 if (true
                     && this.loop<whitespace>(() => this.matchwhitespace($$dpth + 1, $$cr), true) !== null
-                    && this.regexAccept(String.raw`(?:\*)`, $$dpth + 1, $$cr) !== null
+                    && ($scope$literal = this.regexAccept(String.raw`(?:\*)`, $$dpth + 1, $$cr)) !== null
                     && this.loop<whitespace>(() => this.matchwhitespace($$dpth + 1, $$cr), true) !== null
                 ) {
-                    $$res = {kind: ASTKinds.literal_asterisk, };
+                    $$res = {kind: ASTKinds.literal_asterisk, literal: $scope$literal};
                 }
                 return $$res;
             });
@@ -1147,6 +1862,21 @@ export class Parser {
                     && this.loop<whitespace>(() => this.matchwhitespace($$dpth + 1, $$cr), true) !== null
                 ) {
                     $$res = {kind: ASTKinds.literal_select, literal: $scope$literal};
+                }
+                return $$res;
+            });
+    }
+    public matchliteral_where($$dpth: number, $$cr?: ErrorTracker): Nullable<literal_where> {
+        return this.run<literal_where>($$dpth,
+            () => {
+                let $scope$literal: Nullable<string>;
+                let $$res: Nullable<literal_where> = null;
+                if (true
+                    && this.loop<whitespace>(() => this.matchwhitespace($$dpth + 1, $$cr), true) !== null
+                    && ($scope$literal = this.regexAccept(String.raw`(?:where)`, $$dpth + 1, $$cr)) !== null
+                    && this.loop<whitespace>(() => this.matchwhitespace($$dpth + 1, $$cr), true) !== null
+                ) {
+                    $$res = {kind: ASTKinds.literal_where, literal: $scope$literal};
                 }
                 return $$res;
             });

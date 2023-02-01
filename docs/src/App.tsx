@@ -3,6 +3,7 @@ import {
     DatabaseFile,
     MasterSchemaEntry,
     QueryPlanner,
+    ASTKinds, parse
 } from "@joeb3219/tqlite";
 import {
     Button,
@@ -12,6 +13,7 @@ import {
     Select,
     Tab,
     Tabs,
+    TextField,
     Typography,
 } from "@material-ui/core";
 import DownloadIcon from "@material-ui/icons/GetApp";
@@ -156,51 +158,52 @@ const IndexViewer: React.VFC<{ database: DatabaseFile }> = ({ database }) => {
 };
 
 const QueryViewer: React.VFC<{ database: DatabaseFile }> = ({ database }) => {
-    const results = React.useMemo(() => {
-        const query = new QueryPlanner(database, {
-            from: {
-                type: "join",
-                leftTable: "mods",
-                rightTable: "knex_migrations",
-                on: {
-                    a: {
-                        type: "column",
-                        table: "mods",
-                        column: "isNew",
-                    },
-                    b: {
-                        type: "column",
-                        table: "knex_migrations",
-                        column: "batch",
-                    },
-                    comparator: "<",
-                },
-            },
-            what: [],
-            where: [],
-            sort: {
-                table: "mods",
-                column: "size",
-                direction: "ascending",
-            },
-        });
+    const [query, setQuery] = React.useState<string | undefined>(undefined);
 
-        return query.execute();
-    }, [database]);
+    const results = React.useMemo(() => {
+        console.log('query', { query });
+        if (!query) {
+            return [];
+        }
+
+        try {
+            const ast = parse(query);
+            console.log('ast', { query, ast });
+    
+            if (ast.ast?.stmt_list.stmt.kind !== ASTKinds.stmt_select) {
+                return [];
+            }
+    
+            const queryPlanner = new QueryPlanner(database, ast.ast.stmt_list.stmt);
+    
+            return queryPlanner.execute();    
+        } catch (err) {
+            console.error(err);
+            return [];
+        }
+    }, [database, query]);
 
     return (
-        <DataGrid
-            rows={results}
-            columns={Object.keys(results[0]).map((r) => ({
-                key: r,
-                name: r,
-                resizable: true
-            }))}
-            style={{
-                height: "86vh",
-            }}
-            enableVirtualization
-        />
+        <Grid container direction={'column'}>
+            <Grid item>
+                <TextField style={{ width: '100%' }} value={query} onChange={e => setQuery(e.target.value)} />
+            </Grid>
+            {results.length && (
+            <Grid item>
+                <DataGrid
+                rows={results}
+                columns={Object.keys(results[0]).map((r) => ({
+                    key: r,
+                    name: r,
+                    resizable: true
+                }))}
+                style={{
+                    height: "86vh",
+                }}
+                enableVirtualization
+                />
+            </Grid>)}
+        </Grid>
     );
 };
 

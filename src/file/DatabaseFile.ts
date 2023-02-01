@@ -6,7 +6,6 @@ import {
     TableDefinition,
     TableDefinitionParser,
 } from "../parser/TableDefinition.parser";
-import { Where } from "../query/QueryPlanner";
 import { BTreePage, DatabaseHeader } from "./DatabaseFile.types";
 import { DatabaseFileBTreePageUtil } from "./DatabaseFileBTreePage";
 import { DatabaseFileHeaderUtil } from "./DatabaseFileHeader";
@@ -40,14 +39,13 @@ export class DatabaseFile extends File {
     // TODO: implement where for indices
     getTableRowsInternal(
         pageNumber: number,
-        columns: string[],
-        where?: Where[]
+        columns: string[]
     ): any[] {
         const rootPage = this.loadPage(pageNumber, columns);
 
         if (rootPage?.type === "table_interior") {
             return rootPage.pointers.flatMap((p) =>
-                this.getTableRowsInternal(p.pageNumber, columns, where)
+                this.getTableRowsInternal(p.pageNumber, columns)
             );
         }
 
@@ -57,7 +55,7 @@ export class DatabaseFile extends File {
 
         if (rootPage?.type === "index_interior") {
             return rootPage.indices.flatMap((p) =>
-                this.getTableRowsInternal(p.pageNumber, columns, where)
+                this.getTableRowsInternal(p.pageNumber, columns)
             );
         }
 
@@ -66,7 +64,7 @@ export class DatabaseFile extends File {
         });
     }
 
-    getRows(tableOrIndexName: string, where?: Where[]): any[] {
+    getRows(tableOrIndexName: string): any[] {
         const entry = this.schema.find((s) => s.name === tableOrIndexName);
 
         if (!entry?.rootpage) {
@@ -77,7 +75,7 @@ export class DatabaseFile extends File {
             entry.tableDefinition?.columns?.map((c) => c.name) ??
             entry.indexDefinition?.columns ??
             [];
-        return this.getTableRowsInternal(entry.rootpage, columns, where);
+        return this.getTableRowsInternal(entry.rootpage, columns);
     }
 
     parseTableDefinition(sql?: string): TableDefinition | undefined {
