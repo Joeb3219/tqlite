@@ -1,4 +1,4 @@
-const parser = require('sqlite-parser');
+const parser = require("sqlite-parser");
 
 type TokenType =
     | "CREATE"
@@ -204,11 +204,10 @@ export class TableDefinitionParser {
             //     database: 'sqlite'
             // });
             // const astFlat = Array.isArray(ast) ? ast : [ast];
-
             // console.log('result', ast);
-        } catch( err) {
+        } catch (err) {
             console.log(this.sql);
-            console.error('failed to parse', err);
+            console.error("failed to parse", err);
         }
     }
 

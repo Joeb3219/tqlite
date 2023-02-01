@@ -46,7 +46,11 @@ export class DatabaseFile extends File {
 
         if (rootPage?.type === "table_interior") {
             return rootPage.pointers.flatMap((p) =>
-                this.getTableRowsInternal(p.pageNumber, columns, evaluationCriterion)
+                this.getTableRowsInternal(
+                    p.pageNumber,
+                    columns,
+                    evaluationCriterion
+                )
             );
         }
 
@@ -56,16 +60,25 @@ export class DatabaseFile extends File {
 
         if (rootPage?.type === "index_interior") {
             return rootPage.indices.flatMap((p) =>
-                this.getTableRowsInternal(p.pageNumber, columns, evaluationCriterion)
+                this.getTableRowsInternal(
+                    p.pageNumber,
+                    columns,
+                    evaluationCriterion
+                )
             );
         }
 
-        return rootPage.rows.map<Row>((recordRow) => {
-            return recordRow.cells;
-        }).filter(r => evaluationCriterion(r));
+        return rootPage.rows
+            .map<Row>((recordRow) => {
+                return recordRow.cells;
+            })
+            .filter((r) => evaluationCriterion(r));
     }
 
-    getRows(tableOrIndexName: string, evaluationCriterion: (row: any) => boolean): any[] {
+    getRows(
+        tableOrIndexName: string,
+        evaluationCriterion: (row: any) => boolean
+    ): any[] {
         const entry = this.schema.find((s) => s.name === tableOrIndexName);
 
         if (!entry?.rootpage) {
@@ -76,7 +89,11 @@ export class DatabaseFile extends File {
             entry.tableDefinition?.columns?.map((c) => c.name) ??
             entry.indexDefinition?.columns ??
             [];
-        return this.getTableRowsInternal(entry.rootpage, columns, evaluationCriterion);
+        return this.getTableRowsInternal(
+            entry.rootpage,
+            columns,
+            evaluationCriterion
+        );
     }
 
     parseTableDefinition(sql?: string): TableDefinition | undefined {

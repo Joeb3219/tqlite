@@ -1,9 +1,10 @@
 import {
+    ASTKinds,
     BTreePage,
     DatabaseFile,
     MasterSchemaEntry,
+    parse,
     QueryPlanner,
-    ASTKinds, parse
 } from "@joeb3219/tqlite";
 import {
     Button,
@@ -65,7 +66,9 @@ const TableViewer: React.VFC<{ database: DatabaseFile }> = ({ database }) => {
     >(undefined);
 
     const selectedTableRows = React.useMemo(() => {
-        return selectedTable ? database.getRows(selectedTable.name, () => true) : [];
+        return selectedTable
+            ? database.getRows(selectedTable.name, () => true)
+            : [];
     }, [database, selectedTable]);
 
     return (
@@ -117,7 +120,9 @@ const IndexViewer: React.VFC<{ database: DatabaseFile }> = ({ database }) => {
     >(undefined);
 
     const selectedIndexRows = React.useMemo(() => {
-        return selectedIndex ? database.getRows(selectedIndex.name, () => true) : [];
+        return selectedIndex
+            ? database.getRows(selectedIndex.name, () => true)
+            : [];
     }, [database, selectedIndex]);
 
     return (
@@ -161,22 +166,25 @@ const QueryViewer: React.VFC<{ database: DatabaseFile }> = ({ database }) => {
     const [query, setQuery] = React.useState<string | undefined>(undefined);
 
     const results = React.useMemo(() => {
-        console.log('query', { query });
+        console.log("query", { query });
         if (!query) {
             return [];
         }
 
         try {
             const ast = parse(query);
-            console.log('ast', { query, ast });
-    
+            console.log("ast", { query, ast });
+
             if (ast.ast?.stmt_list.stmt.kind !== ASTKinds.stmt_select) {
                 return [];
             }
-    
-            const queryPlanner = new QueryPlanner(database, ast.ast.stmt_list.stmt);
-    
-            return queryPlanner.execute();    
+
+            const queryPlanner = new QueryPlanner(
+                database,
+                ast.ast.stmt_list.stmt
+            );
+
+            return queryPlanner.execute();
         } catch (err) {
             console.error(err);
             return [];
@@ -184,25 +192,30 @@ const QueryViewer: React.VFC<{ database: DatabaseFile }> = ({ database }) => {
     }, [database, query]);
 
     return (
-        <Grid container direction={'column'}>
+        <Grid container direction={"column"}>
             <Grid item>
-                <TextField style={{ width: '100%' }} value={query} onChange={e => setQuery(e.target.value)} />
+                <TextField
+                    style={{ width: "100%" }}
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                />
             </Grid>
             {results.length && (
-            <Grid item>
-                <DataGrid
-                rows={results}
-                columns={Object.keys(results[0]).map((r) => ({
-                    key: r,
-                    name: r,
-                    resizable: true
-                }))}
-                style={{
-                    height: "86vh",
-                }}
-                enableVirtualization
-                />
-            </Grid>)}
+                <Grid item>
+                    <DataGrid
+                        rows={results}
+                        columns={Object.keys(results[0]).map((r) => ({
+                            key: r,
+                            name: r,
+                            resizable: true,
+                        }))}
+                        style={{
+                            height: "86vh",
+                        }}
+                        enableVirtualization
+                    />
+                </Grid>
+            )}
         </Grid>
     );
 };

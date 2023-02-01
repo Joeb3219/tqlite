@@ -14,8 +14,10 @@ describe("DatabaseFile", () => {
         // console.log(res);
     });
 
-    it('should foo', () => {
-        const parsed = parse('SELECT a.* FROM alpha a WHERE a.foo > 5 AND a.bar <= 10');
-        expect(parsed).toEqual({})
-    })
+    it("should foo", () => {
+        const parsed = parse(
+            "SELECT a.* FROM alpha a WHERE a.foo > 5 AND a.bar <= 10"
+        );
+        expect(parsed).toEqual({});
+    });
 });

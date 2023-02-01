@@ -6,15 +6,15 @@ tqlite is a pure typescript SQLite client. It is meant for educational purposes,
 
 Currently, the following is supported:
 
-- Reading the sqlite_schema
-- Reading database tables
-- Reading database views
-- Executing very basic queries via an abstracted mechanism
+-   Reading the sqlite_schema
+-   Reading database tables
+-   Reading database views
+-   Executing very basic queries via an abstracted mechanism
 
 ## Currently In-Progress
 
-- SQL parsing
-- Advanced query planning
-- Writing to disk
-- Journal file reading
-- WAL support
+-   SQL parsing
+-   Advanced query planning
+-   Writing to disk
+-   Journal file reading
+-   WAL support
