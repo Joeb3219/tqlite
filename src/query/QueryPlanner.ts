@@ -6,6 +6,7 @@ import {
     expression_front_recursive,
     select_limit,
     select_ordering_term,
+    select_qualifier,
     select_result_column,
     select_where,
     stmt_select,
@@ -270,9 +271,10 @@ export class QueryPlanner {
 
     selectColumns(
         resultSet: ResultSet,
-        columns: select_result_column[]
+        columns: select_result_column[],
+        qualifier?: select_qualifier
     ): any[] {
-        return resultSet.map((row) => {
+        const projection = resultSet.map((row) => {
             return columns.reduce((state, column) => {
                 if (column.kind === ASTKinds.literal_asterisk) {
                     return {
@@ -304,6 +306,11 @@ export class QueryPlanner {
                 };
             }, {});
         });
+
+        // If the user requests distinct, we filter out any repeats
+        return qualifier?.kind === ASTKinds.literal_distinct
+            ? _.uniqWith(projection, _.isEqual)
+            : projection;
     }
 
     applyOrdering(rows: ResultSet, orderBy: select_ordering_term[]): ResultSet {
@@ -371,7 +378,7 @@ export class QueryPlanner {
     }
 
     execute(): any[] {
-        const { where, limit } = this.query.select_core;
+        const { where, limit, qualifier } = this.query.select_core;
         const columns = ASTUtil.flattenSelectRealColumnList(
             this.query.select_core.columns
         );
@@ -388,7 +395,8 @@ export class QueryPlanner {
         const orderedResultSet = this.applyOrdering(resultSet, orderBy);
         const selectionAppliedRows = this.selectColumns(
             orderedResultSet,
-            columns
+            columns,
+            qualifier ?? undefined
         );
 
         return limit
