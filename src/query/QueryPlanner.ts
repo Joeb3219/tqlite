@@ -102,15 +102,23 @@ export class QueryPlanner {
                                             criterion
                                         );
                                     case ASTKinds.literal_full:
-                                        throw new Error(
-                                            "Full join not yet implemented"
+                                        return QueryPlannerJoin.fullJoin(
+                                            joinState,
+                                            joinTable,
+                                            criterion
                                         );
                                     case ASTKinds.literal_cross:
-                                        throw new Error(
-                                            "Cross join not yet implemented"
+                                        return QueryPlannerJoin.crossJoin(
+                                            joinState,
+                                            joinTable,
+                                            criterion
                                         );
                                 }
-                                return joinState;
+                                return QueryPlannerJoin.innerJoin(
+                                    joins,
+                                    joinTable,
+                                    criterion
+                                );
                             },
                             tableA
                         );
