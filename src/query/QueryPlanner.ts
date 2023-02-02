@@ -14,6 +14,8 @@ import {
 import { ASTUtil, FlattenedSelectFrom } from "./AST.util";
 import { ResultSet } from "./QueryPlanner.types";
 import { QueryPlannerJoin } from "./QueryPlannerJoin";
+import { QueryPlannerMathFunctions } from "./QueryPlannerMathFunctions";
+import { QueryPlannerScalarFunctions } from "./QueryPlannerScalarFunctions";
 
 const BinaryOperationMap: {
     [operator in binary_operator["kind"]]: (a: any, b: any) => any;
@@ -357,6 +359,34 @@ export class QueryPlanner {
                     expression.expression,
                     alias
                 );
+            case ASTKinds.expression_function_invocation: {
+                const recursiveExpressions = expression.expression_list
+                    ? [
+                          expression.expression_list.expression,
+                          ...expression.expression_list.other_expressions.map(
+                              (e) => e.expression
+                          ),
+                      ].map((e) => this.evaluateExpression(row, e, alias).value)
+                    : [];
+
+                const fnName = expression.function_name.value;
+                const value = QueryPlannerScalarFunctions.hasFunction(fnName)
+                    ? QueryPlannerScalarFunctions.executeFunction(
+                          fnName,
+                          recursiveExpressions
+                      )
+                    : QueryPlannerMathFunctions.hasFunction(fnName)
+                    ? QueryPlannerMathFunctions.executeFunction(
+                          fnName,
+                          recursiveExpressions
+                      )
+                    : undefined;
+
+                return {
+                    name: alias ?? `${fnName}(EXPRESSIONS)`,
+                    value,
+                };
+            }
             case ASTKinds.identifier:
                 throw new Error("Unexpected column type identifier");
             case ASTKinds.num:

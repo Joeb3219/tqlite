@@ -57,6 +57,8 @@ export enum ASTKinds {
     select_limit = "select_limit",
     select_limit_offset_1 = "select_limit_offset_1",
     select_limit_offset_2 = "select_limit_offset_2",
+    expression_list = "expression_list",
+    expression_list_$0 = "expression_list_$0",
     expression = "expression",
     expression_column_1 = "expression_column_1",
     expression_column_2 = "expression_column_2",
@@ -67,6 +69,7 @@ export enum ASTKinds {
     expression_non_front_recursive_1 = "expression_non_front_recursive_1",
     expression_non_front_recursive_2 = "expression_non_front_recursive_2",
     expression_non_front_recursive_3 = "expression_non_front_recursive_3",
+    expression_function_invocation = "expression_function_invocation",
     expression_select_or_expression_list = "expression_select_or_expression_list",
     expression_select_or_expression_list_$0_1 = "expression_select_or_expression_list_$0_1",
     expression_select_or_expression_list_$0_2 = "expression_select_or_expression_list_$0_2",
@@ -89,6 +92,7 @@ export enum ASTKinds {
     expression_front_recursive_5 = "expression_front_recursive_5",
     expression_front_recursive_6 = "expression_front_recursive_6",
     expression_front_recursive_7 = "expression_front_recursive_7",
+    expression_front_recursive_8 = "expression_front_recursive_8",
     select_with = "select_with",
     identifier = "identifier",
     num = "num",
@@ -457,6 +461,15 @@ export interface select_limit_offset_2 {
     kind: ASTKinds.select_limit_offset_2;
     offset: expression;
 }
+export interface expression_list {
+    kind: ASTKinds.expression_list;
+    expression: expression;
+    other_expressions: expression_list_$0[];
+}
+export interface expression_list_$0 {
+    kind: ASTKinds.expression_list_$0;
+    expression: expression;
+}
 export type expression = expression_front_recursive;
 export type expression_column = expression_column_1 | expression_column_2;
 export interface expression_column_1 {
@@ -494,6 +507,11 @@ export type expression_non_front_recursive =
 export type expression_non_front_recursive_1 = expression_column;
 export type expression_non_front_recursive_2 = expression_unary;
 export type expression_non_front_recursive_3 = value_literal;
+export interface expression_function_invocation {
+    kind: ASTKinds.expression_function_invocation;
+    function_name: identifier;
+    expression_list: Nullable<expression_list>;
+}
 export interface expression_select_or_expression_list {
     kind: ASTKinds.expression_select_or_expression_list;
     expression_or_select: expression_select_or_expression_list_$0;
@@ -582,14 +600,16 @@ export type expression_front_recursive =
     | expression_front_recursive_4
     | expression_front_recursive_5
     | expression_front_recursive_6
-    | expression_front_recursive_7;
+    | expression_front_recursive_7
+    | expression_front_recursive_8;
 export type expression_front_recursive_1 = expression_in;
 export type expression_front_recursive_2 = expression_exists_assertion;
 export type expression_front_recursive_3 = expression_parens;
 export type expression_front_recursive_4 = expression_null_assertion;
 export type expression_front_recursive_5 = expression_between;
 export type expression_front_recursive_6 = expression_binary;
-export type expression_front_recursive_7 = expression_non_front_recursive;
+export type expression_front_recursive_7 = expression_function_invocation;
+export type expression_front_recursive_8 = expression_non_front_recursive;
 export type select_with = literal_with;
 export interface identifier {
     kind: ASTKinds.identifier;
@@ -2253,6 +2273,53 @@ export class Parser {
             return $$res;
         });
     }
+    public matchexpression_list(
+        $$dpth: number,
+        $$cr?: ErrorTracker
+    ): Nullable<expression_list> {
+        return this.run<expression_list>($$dpth, () => {
+            let $scope$expression: Nullable<expression>;
+            let $scope$other_expressions: Nullable<expression_list_$0[]>;
+            let $$res: Nullable<expression_list> = null;
+            if (
+                true &&
+                ($scope$expression = this.matchexpression($$dpth + 1, $$cr)) !==
+                    null &&
+                ($scope$other_expressions = this.loop<expression_list_$0>(
+                    () => this.matchexpression_list_$0($$dpth + 1, $$cr),
+                    true
+                )) !== null
+            ) {
+                $$res = {
+                    kind: ASTKinds.expression_list,
+                    expression: $scope$expression,
+                    other_expressions: $scope$other_expressions,
+                };
+            }
+            return $$res;
+        });
+    }
+    public matchexpression_list_$0(
+        $$dpth: number,
+        $$cr?: ErrorTracker
+    ): Nullable<expression_list_$0> {
+        return this.run<expression_list_$0>($$dpth, () => {
+            let $scope$expression: Nullable<expression>;
+            let $$res: Nullable<expression_list_$0> = null;
+            if (
+                true &&
+                this.matchliteral_comma($$dpth + 1, $$cr) !== null &&
+                ($scope$expression = this.matchexpression($$dpth + 1, $$cr)) !==
+                    null
+            ) {
+                $$res = {
+                    kind: ASTKinds.expression_list_$0,
+                    expression: $scope$expression,
+                };
+            }
+            return $$res;
+        });
+    }
     public matchexpression(
         $$dpth: number,
         $$cr?: ErrorTracker
@@ -2461,6 +2528,37 @@ export class Parser {
         $$cr?: ErrorTracker
     ): Nullable<expression_non_front_recursive_3> {
         return this.matchvalue_literal($$dpth + 1, $$cr);
+    }
+    public matchexpression_function_invocation(
+        $$dpth: number,
+        $$cr?: ErrorTracker
+    ): Nullable<expression_function_invocation> {
+        return this.run<expression_function_invocation>($$dpth, () => {
+            let $scope$function_name: Nullable<identifier>;
+            let $scope$expression_list: Nullable<Nullable<expression_list>>;
+            let $$res: Nullable<expression_function_invocation> = null;
+            if (
+                true &&
+                ($scope$function_name = this.matchidentifier(
+                    $$dpth + 1,
+                    $$cr
+                )) !== null &&
+                this.matchliteral_open_paren($$dpth + 1, $$cr) !== null &&
+                (($scope$expression_list = this.matchexpression_list(
+                    $$dpth + 1,
+                    $$cr
+                )) ||
+                    true) &&
+                this.matchliteral_close_paren($$dpth + 1, $$cr) !== null
+            ) {
+                $$res = {
+                    kind: ASTKinds.expression_function_invocation,
+                    function_name: $scope$function_name,
+                    expression_list: $scope$expression_list,
+                };
+            }
+            return $$res;
+        });
     }
     public matchexpression_select_or_expression_list(
         $$dpth: number,
@@ -2946,6 +3044,7 @@ export class Parser {
             () => this.matchexpression_front_recursive_5($$dpth + 1, $$cr),
             () => this.matchexpression_front_recursive_6($$dpth + 1, $$cr),
             () => this.matchexpression_front_recursive_7($$dpth + 1, $$cr),
+            () => this.matchexpression_front_recursive_8($$dpth + 1, $$cr),
         ]);
     }
     public matchexpression_front_recursive_1(
@@ -2988,6 +3087,12 @@ export class Parser {
         $$dpth: number,
         $$cr?: ErrorTracker
     ): Nullable<expression_front_recursive_7> {
+        return this.matchexpression_function_invocation($$dpth + 1, $$cr);
+    }
+    public matchexpression_front_recursive_8(
+        $$dpth: number,
+        $$cr?: ErrorTracker
+    ): Nullable<expression_front_recursive_8> {
         return this.matchexpression_non_front_recursive($$dpth + 1, $$cr);
     }
     public matchselect_with(

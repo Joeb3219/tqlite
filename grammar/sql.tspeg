@@ -41,11 +41,13 @@ select_ordering_term_nulls_direction := literal_nulls value=literal_first | lite
 select_limit := literal_limit expression=expression offset=select_limit_offset?
 select_limit_offset := literal_offset offset=expression | literal_comma offset=expression
 
+expression_list := expression=expression other_expressions={ literal_comma expression=expression }*
 expression := expression_front_recursive
 expression_column := schema_name={whitespace* schema_name=identifier literal_period} table_name={whitespace* table_name=identifier literal_period} column_name=identifier | table_name={whitespace* table_name=identifier literal_period}? column_name=identifier 
 expression_unary := unary_operator=unary_operator expression=expression
 expression_non_front_recursive := expression_column | expression_unary | value_literal
 
+expression_function_invocation := function_name=identifier literal_open_paren expression_list=expression_list? literal_close_paren
 expression_select_or_expression_list := expression_or_select={expression=expression | stmt_select=stmt_select} other_expression_or_selects={literal_comma expression_or_select={expression=expression | stmt_select=stmt_select}}+
 expression_in := expression=expression_non_front_recursive invert=literal_not? literal_in literal_open_paren values=expression_select_or_expression_list literal_close_paren
 expression_exists_assertion := invert=literal_not? literal_exists literal_open_paren stmt_select=stmt_select literal_close_paren 
@@ -53,7 +55,7 @@ expression_null_assertion := expression=expression_non_front_recursive not_null=
 expression_between := expression=expression_non_front_recursive invert=literal_not? literal_between left_expression=expression_non_front_recursive literal_and right_expression=expression
 expression_binary := expression_a=expression_non_front_recursive operator=binary_operator expression_b=expression
 expression_parens := literal_open_paren expression=expression_front_recursive literal_close_paren
-expression_front_recursive := expression_in | expression_exists_assertion | expression_parens | expression_null_assertion | expression_between | expression_binary | expression_non_front_recursive
+expression_front_recursive := expression_in | expression_exists_assertion | expression_parens | expression_null_assertion | expression_between | expression_binary | expression_function_invocation | expression_non_front_recursive
 
 select_with := literal_with
 
