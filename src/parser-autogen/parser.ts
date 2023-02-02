@@ -67,6 +67,13 @@ export enum ASTKinds {
     expression_non_front_recursive_1 = "expression_non_front_recursive_1",
     expression_non_front_recursive_2 = "expression_non_front_recursive_2",
     expression_non_front_recursive_3 = "expression_non_front_recursive_3",
+    expression_select_or_expression_list = "expression_select_or_expression_list",
+    expression_select_or_expression_list_$0_1 = "expression_select_or_expression_list_$0_1",
+    expression_select_or_expression_list_$0_2 = "expression_select_or_expression_list_$0_2",
+    expression_select_or_expression_list_$1 = "expression_select_or_expression_list_$1",
+    expression_select_or_expression_list_$1_$0_1 = "expression_select_or_expression_list_$1_$0_1",
+    expression_select_or_expression_list_$1_$0_2 = "expression_select_or_expression_list_$1_$0_2",
+    expression_in = "expression_in",
     expression_exists_assertion = "expression_exists_assertion",
     expression_null_assertion_1 = "expression_null_assertion_1",
     expression_null_assertion_2 = "expression_null_assertion_2",
@@ -81,6 +88,7 @@ export enum ASTKinds {
     expression_front_recursive_4 = "expression_front_recursive_4",
     expression_front_recursive_5 = "expression_front_recursive_5",
     expression_front_recursive_6 = "expression_front_recursive_6",
+    expression_front_recursive_7 = "expression_front_recursive_7",
     select_with = "select_with",
     identifier = "identifier",
     num = "num",
@@ -157,6 +165,7 @@ export enum ASTKinds {
     all_literals_51 = "all_literals_51",
     all_literals_52 = "all_literals_52",
     all_literals_53 = "all_literals_53",
+    all_literals_54 = "all_literals_54",
     literal_order = "literal_order",
     literal_by = "literal_by",
     literal_collate = "literal_collate",
@@ -188,6 +197,7 @@ export enum ASTKinds {
     literal_is = "literal_is",
     literal_between = "literal_between",
     literal_exists = "literal_exists",
+    literal_in = "literal_in",
     literal_comma = "literal_comma",
     literal_period = "literal_period",
     literal_asterisk = "literal_asterisk",
@@ -484,6 +494,43 @@ export type expression_non_front_recursive =
 export type expression_non_front_recursive_1 = expression_column;
 export type expression_non_front_recursive_2 = expression_unary;
 export type expression_non_front_recursive_3 = value_literal;
+export interface expression_select_or_expression_list {
+    kind: ASTKinds.expression_select_or_expression_list;
+    expression_or_select: expression_select_or_expression_list_$0;
+    other_expression_or_selects: expression_select_or_expression_list_$1[];
+}
+export type expression_select_or_expression_list_$0 =
+    | expression_select_or_expression_list_$0_1
+    | expression_select_or_expression_list_$0_2;
+export interface expression_select_or_expression_list_$0_1 {
+    kind: ASTKinds.expression_select_or_expression_list_$0_1;
+    expression: expression;
+}
+export interface expression_select_or_expression_list_$0_2 {
+    kind: ASTKinds.expression_select_or_expression_list_$0_2;
+    stmt_select: stmt_select;
+}
+export interface expression_select_or_expression_list_$1 {
+    kind: ASTKinds.expression_select_or_expression_list_$1;
+    expression_or_select: expression_select_or_expression_list_$1_$0;
+}
+export type expression_select_or_expression_list_$1_$0 =
+    | expression_select_or_expression_list_$1_$0_1
+    | expression_select_or_expression_list_$1_$0_2;
+export interface expression_select_or_expression_list_$1_$0_1 {
+    kind: ASTKinds.expression_select_or_expression_list_$1_$0_1;
+    expression: expression;
+}
+export interface expression_select_or_expression_list_$1_$0_2 {
+    kind: ASTKinds.expression_select_or_expression_list_$1_$0_2;
+    stmt_select: stmt_select;
+}
+export interface expression_in {
+    kind: ASTKinds.expression_in;
+    expression: expression_non_front_recursive;
+    invert: Nullable<literal_not>;
+    values: expression_select_or_expression_list;
+}
 export interface expression_exists_assertion {
     kind: ASTKinds.expression_exists_assertion;
     invert: Nullable<literal_not>;
@@ -534,13 +581,15 @@ export type expression_front_recursive =
     | expression_front_recursive_3
     | expression_front_recursive_4
     | expression_front_recursive_5
-    | expression_front_recursive_6;
-export type expression_front_recursive_1 = expression_exists_assertion;
-export type expression_front_recursive_2 = expression_parens;
-export type expression_front_recursive_3 = expression_null_assertion;
-export type expression_front_recursive_4 = expression_between;
-export type expression_front_recursive_5 = expression_binary;
-export type expression_front_recursive_6 = expression_non_front_recursive;
+    | expression_front_recursive_6
+    | expression_front_recursive_7;
+export type expression_front_recursive_1 = expression_in;
+export type expression_front_recursive_2 = expression_exists_assertion;
+export type expression_front_recursive_3 = expression_parens;
+export type expression_front_recursive_4 = expression_null_assertion;
+export type expression_front_recursive_5 = expression_between;
+export type expression_front_recursive_6 = expression_binary;
+export type expression_front_recursive_7 = expression_non_front_recursive;
 export type select_with = literal_with;
 export interface identifier {
     kind: ASTKinds.identifier;
@@ -646,7 +695,8 @@ export type all_literals =
     | all_literals_50
     | all_literals_51
     | all_literals_52
-    | all_literals_53;
+    | all_literals_53
+    | all_literals_54;
 export type all_literals_1 = literal_and;
 export type all_literals_2 = literal_or;
 export type all_literals_3 = literal_plus;
@@ -700,6 +750,7 @@ export type all_literals_50 = literal_is_null;
 export type all_literals_51 = literal_is;
 export type all_literals_52 = literal_between;
 export type all_literals_53 = literal_exists;
+export type all_literals_54 = literal_in;
 export interface literal_order {
     kind: ASTKinds.literal_order;
     literal: string;
@@ -823,6 +874,10 @@ export interface literal_between {
 }
 export interface literal_exists {
     kind: ASTKinds.literal_exists;
+    literal: string;
+}
+export interface literal_in {
+    kind: ASTKinds.literal_in;
     literal: string;
 }
 export interface literal_comma {
@@ -2407,6 +2462,240 @@ export class Parser {
     ): Nullable<expression_non_front_recursive_3> {
         return this.matchvalue_literal($$dpth + 1, $$cr);
     }
+    public matchexpression_select_or_expression_list(
+        $$dpth: number,
+        $$cr?: ErrorTracker
+    ): Nullable<expression_select_or_expression_list> {
+        return this.run<expression_select_or_expression_list>($$dpth, () => {
+            let $scope$expression_or_select: Nullable<expression_select_or_expression_list_$0>;
+            let $scope$other_expression_or_selects: Nullable<
+                expression_select_or_expression_list_$1[]
+            >;
+            let $$res: Nullable<expression_select_or_expression_list> = null;
+            if (
+                true &&
+                ($scope$expression_or_select =
+                    this.matchexpression_select_or_expression_list_$0(
+                        $$dpth + 1,
+                        $$cr
+                    )) !== null &&
+                ($scope$other_expression_or_selects =
+                    this.loop<expression_select_or_expression_list_$1>(
+                        () =>
+                            this.matchexpression_select_or_expression_list_$1(
+                                $$dpth + 1,
+                                $$cr
+                            ),
+                        false
+                    )) !== null
+            ) {
+                $$res = {
+                    kind: ASTKinds.expression_select_or_expression_list,
+                    expression_or_select: $scope$expression_or_select,
+                    other_expression_or_selects:
+                        $scope$other_expression_or_selects,
+                };
+            }
+            return $$res;
+        });
+    }
+    public matchexpression_select_or_expression_list_$0(
+        $$dpth: number,
+        $$cr?: ErrorTracker
+    ): Nullable<expression_select_or_expression_list_$0> {
+        return this.choice<expression_select_or_expression_list_$0>([
+            () =>
+                this.matchexpression_select_or_expression_list_$0_1(
+                    $$dpth + 1,
+                    $$cr
+                ),
+            () =>
+                this.matchexpression_select_or_expression_list_$0_2(
+                    $$dpth + 1,
+                    $$cr
+                ),
+        ]);
+    }
+    public matchexpression_select_or_expression_list_$0_1(
+        $$dpth: number,
+        $$cr?: ErrorTracker
+    ): Nullable<expression_select_or_expression_list_$0_1> {
+        return this.run<expression_select_or_expression_list_$0_1>(
+            $$dpth,
+            () => {
+                let $scope$expression: Nullable<expression>;
+                let $$res: Nullable<expression_select_or_expression_list_$0_1> =
+                    null;
+                if (
+                    true &&
+                    ($scope$expression = this.matchexpression(
+                        $$dpth + 1,
+                        $$cr
+                    )) !== null
+                ) {
+                    $$res = {
+                        kind: ASTKinds.expression_select_or_expression_list_$0_1,
+                        expression: $scope$expression,
+                    };
+                }
+                return $$res;
+            }
+        );
+    }
+    public matchexpression_select_or_expression_list_$0_2(
+        $$dpth: number,
+        $$cr?: ErrorTracker
+    ): Nullable<expression_select_or_expression_list_$0_2> {
+        return this.run<expression_select_or_expression_list_$0_2>(
+            $$dpth,
+            () => {
+                let $scope$stmt_select: Nullable<stmt_select>;
+                let $$res: Nullable<expression_select_or_expression_list_$0_2> =
+                    null;
+                if (
+                    true &&
+                    ($scope$stmt_select = this.matchstmt_select(
+                        $$dpth + 1,
+                        $$cr
+                    )) !== null
+                ) {
+                    $$res = {
+                        kind: ASTKinds.expression_select_or_expression_list_$0_2,
+                        stmt_select: $scope$stmt_select,
+                    };
+                }
+                return $$res;
+            }
+        );
+    }
+    public matchexpression_select_or_expression_list_$1(
+        $$dpth: number,
+        $$cr?: ErrorTracker
+    ): Nullable<expression_select_or_expression_list_$1> {
+        return this.run<expression_select_or_expression_list_$1>($$dpth, () => {
+            let $scope$expression_or_select: Nullable<expression_select_or_expression_list_$1_$0>;
+            let $$res: Nullable<expression_select_or_expression_list_$1> = null;
+            if (
+                true &&
+                this.matchliteral_comma($$dpth + 1, $$cr) !== null &&
+                ($scope$expression_or_select =
+                    this.matchexpression_select_or_expression_list_$1_$0(
+                        $$dpth + 1,
+                        $$cr
+                    )) !== null
+            ) {
+                $$res = {
+                    kind: ASTKinds.expression_select_or_expression_list_$1,
+                    expression_or_select: $scope$expression_or_select,
+                };
+            }
+            return $$res;
+        });
+    }
+    public matchexpression_select_or_expression_list_$1_$0(
+        $$dpth: number,
+        $$cr?: ErrorTracker
+    ): Nullable<expression_select_or_expression_list_$1_$0> {
+        return this.choice<expression_select_or_expression_list_$1_$0>([
+            () =>
+                this.matchexpression_select_or_expression_list_$1_$0_1(
+                    $$dpth + 1,
+                    $$cr
+                ),
+            () =>
+                this.matchexpression_select_or_expression_list_$1_$0_2(
+                    $$dpth + 1,
+                    $$cr
+                ),
+        ]);
+    }
+    public matchexpression_select_or_expression_list_$1_$0_1(
+        $$dpth: number,
+        $$cr?: ErrorTracker
+    ): Nullable<expression_select_or_expression_list_$1_$0_1> {
+        return this.run<expression_select_or_expression_list_$1_$0_1>(
+            $$dpth,
+            () => {
+                let $scope$expression: Nullable<expression>;
+                let $$res: Nullable<expression_select_or_expression_list_$1_$0_1> =
+                    null;
+                if (
+                    true &&
+                    ($scope$expression = this.matchexpression(
+                        $$dpth + 1,
+                        $$cr
+                    )) !== null
+                ) {
+                    $$res = {
+                        kind: ASTKinds.expression_select_or_expression_list_$1_$0_1,
+                        expression: $scope$expression,
+                    };
+                }
+                return $$res;
+            }
+        );
+    }
+    public matchexpression_select_or_expression_list_$1_$0_2(
+        $$dpth: number,
+        $$cr?: ErrorTracker
+    ): Nullable<expression_select_or_expression_list_$1_$0_2> {
+        return this.run<expression_select_or_expression_list_$1_$0_2>(
+            $$dpth,
+            () => {
+                let $scope$stmt_select: Nullable<stmt_select>;
+                let $$res: Nullable<expression_select_or_expression_list_$1_$0_2> =
+                    null;
+                if (
+                    true &&
+                    ($scope$stmt_select = this.matchstmt_select(
+                        $$dpth + 1,
+                        $$cr
+                    )) !== null
+                ) {
+                    $$res = {
+                        kind: ASTKinds.expression_select_or_expression_list_$1_$0_2,
+                        stmt_select: $scope$stmt_select,
+                    };
+                }
+                return $$res;
+            }
+        );
+    }
+    public matchexpression_in(
+        $$dpth: number,
+        $$cr?: ErrorTracker
+    ): Nullable<expression_in> {
+        return this.run<expression_in>($$dpth, () => {
+            let $scope$expression: Nullable<expression_non_front_recursive>;
+            let $scope$invert: Nullable<Nullable<literal_not>>;
+            let $scope$values: Nullable<expression_select_or_expression_list>;
+            let $$res: Nullable<expression_in> = null;
+            if (
+                true &&
+                ($scope$expression = this.matchexpression_non_front_recursive(
+                    $$dpth + 1,
+                    $$cr
+                )) !== null &&
+                (($scope$invert = this.matchliteral_not($$dpth + 1, $$cr)) ||
+                    true) &&
+                this.matchliteral_in($$dpth + 1, $$cr) !== null &&
+                this.matchliteral_open_paren($$dpth + 1, $$cr) !== null &&
+                ($scope$values = this.matchexpression_select_or_expression_list(
+                    $$dpth + 1,
+                    $$cr
+                )) !== null &&
+                this.matchliteral_close_paren($$dpth + 1, $$cr) !== null
+            ) {
+                $$res = {
+                    kind: ASTKinds.expression_in,
+                    expression: $scope$expression,
+                    invert: $scope$invert,
+                    values: $scope$values,
+                };
+            }
+            return $$res;
+        });
+    }
     public matchexpression_exists_assertion(
         $$dpth: number,
         $$cr?: ErrorTracker
@@ -2656,42 +2945,49 @@ export class Parser {
             () => this.matchexpression_front_recursive_4($$dpth + 1, $$cr),
             () => this.matchexpression_front_recursive_5($$dpth + 1, $$cr),
             () => this.matchexpression_front_recursive_6($$dpth + 1, $$cr),
+            () => this.matchexpression_front_recursive_7($$dpth + 1, $$cr),
         ]);
     }
     public matchexpression_front_recursive_1(
         $$dpth: number,
         $$cr?: ErrorTracker
     ): Nullable<expression_front_recursive_1> {
-        return this.matchexpression_exists_assertion($$dpth + 1, $$cr);
+        return this.matchexpression_in($$dpth + 1, $$cr);
     }
     public matchexpression_front_recursive_2(
         $$dpth: number,
         $$cr?: ErrorTracker
     ): Nullable<expression_front_recursive_2> {
-        return this.matchexpression_parens($$dpth + 1, $$cr);
+        return this.matchexpression_exists_assertion($$dpth + 1, $$cr);
     }
     public matchexpression_front_recursive_3(
         $$dpth: number,
         $$cr?: ErrorTracker
     ): Nullable<expression_front_recursive_3> {
-        return this.matchexpression_null_assertion($$dpth + 1, $$cr);
+        return this.matchexpression_parens($$dpth + 1, $$cr);
     }
     public matchexpression_front_recursive_4(
         $$dpth: number,
         $$cr?: ErrorTracker
     ): Nullable<expression_front_recursive_4> {
-        return this.matchexpression_between($$dpth + 1, $$cr);
+        return this.matchexpression_null_assertion($$dpth + 1, $$cr);
     }
     public matchexpression_front_recursive_5(
         $$dpth: number,
         $$cr?: ErrorTracker
     ): Nullable<expression_front_recursive_5> {
-        return this.matchexpression_binary($$dpth + 1, $$cr);
+        return this.matchexpression_between($$dpth + 1, $$cr);
     }
     public matchexpression_front_recursive_6(
         $$dpth: number,
         $$cr?: ErrorTracker
     ): Nullable<expression_front_recursive_6> {
+        return this.matchexpression_binary($$dpth + 1, $$cr);
+    }
+    public matchexpression_front_recursive_7(
+        $$dpth: number,
+        $$cr?: ErrorTracker
+    ): Nullable<expression_front_recursive_7> {
         return this.matchexpression_non_front_recursive($$dpth + 1, $$cr);
     }
     public matchselect_with(
@@ -2987,6 +3283,7 @@ export class Parser {
             () => this.matchall_literals_51($$dpth + 1, $$cr),
             () => this.matchall_literals_52($$dpth + 1, $$cr),
             () => this.matchall_literals_53($$dpth + 1, $$cr),
+            () => this.matchall_literals_54($$dpth + 1, $$cr),
         ]);
     }
     public matchall_literals_1(
@@ -3306,6 +3603,12 @@ export class Parser {
         $$cr?: ErrorTracker
     ): Nullable<all_literals_53> {
         return this.matchliteral_exists($$dpth + 1, $$cr);
+    }
+    public matchall_literals_54(
+        $$dpth: number,
+        $$cr?: ErrorTracker
+    ): Nullable<all_literals_54> {
+        return this.matchliteral_in($$dpth + 1, $$cr);
     }
     public matchliteral_order(
         $$dpth: number,
@@ -4243,6 +4546,34 @@ export class Parser {
                     kind: ASTKinds.literal_exists,
                     literal: $scope$literal,
                 };
+            }
+            return $$res;
+        });
+    }
+    public matchliteral_in(
+        $$dpth: number,
+        $$cr?: ErrorTracker
+    ): Nullable<literal_in> {
+        return this.run<literal_in>($$dpth, () => {
+            let $scope$literal: Nullable<string>;
+            let $$res: Nullable<literal_in> = null;
+            if (
+                true &&
+                this.loop<whitespace>(
+                    () => this.matchwhitespace($$dpth + 1, $$cr),
+                    true
+                ) !== null &&
+                ($scope$literal = this.regexAccept(
+                    String.raw`(?:in)`,
+                    $$dpth + 1,
+                    $$cr
+                )) !== null &&
+                this.loop<whitespace>(
+                    () => this.matchwhitespace($$dpth + 1, $$cr),
+                    true
+                ) !== null
+            ) {
+                $$res = { kind: ASTKinds.literal_in, literal: $scope$literal };
             }
             return $$res;
         });

@@ -271,6 +271,41 @@ export class QueryPlanner {
                         : isExpressionNull,
                 };
             }
+            case ASTKinds.expression_in: {
+                const recursiveExpression = this.evaluateExpression(
+                    row,
+                    expression.expression,
+                    alias
+                );
+                const expressionList = [
+                    expression.values.expression_or_select,
+                    ...expression.values.other_expression_or_selects.map(
+                        (e) => e.expression_or_select
+                    ),
+                ];
+                const recursiveExpressionList = expressionList.map((e) => {
+                    if ("stmt_select" in e) {
+                        const innerSelect = new QueryPlanner(
+                            this.database,
+                            e.stmt_select
+                        ).execute();
+
+                        return innerSelect;
+                    }
+
+                    return this.evaluateExpression(row, e.expression, alias)
+                        .value;
+                });
+
+                const isInValues = recursiveExpressionList.includes(
+                    recursiveExpression.value
+                );
+
+                return {
+                    name: `${expression.invert ? "IS NOT" : ""} IN (STMTS)`,
+                    value: expression.invert ? !isInValues : isInValues,
+                };
+            }
             case ASTKinds.expression_between: {
                 const recursiveExpressionSource = this.evaluateExpression(
                     row,
