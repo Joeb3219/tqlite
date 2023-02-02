@@ -13,6 +13,7 @@ import {
 } from "../parser-autogen/parser";
 import { ASTUtil, FlattenedSelectFrom } from "./AST.util";
 import { ResultSet } from "./QueryPlanner.types";
+import { QueryPlannerDateFunctions } from "./QueryPlannerDateFunctions";
 import { QueryPlannerJoin } from "./QueryPlannerJoin";
 import { QueryPlannerMathFunctions } from "./QueryPlannerMathFunctions";
 import { QueryPlannerScalarFunctions } from "./QueryPlannerScalarFunctions";
@@ -369,7 +370,7 @@ export class QueryPlanner {
                       ].map((e) => this.evaluateExpression(row, e, alias).value)
                     : [];
 
-                const fnName = expression.function_name.value;
+                const fnName = expression.function_name.value.toLowerCase();
                 const value = QueryPlannerScalarFunctions.hasFunction(fnName)
                     ? QueryPlannerScalarFunctions.executeFunction(
                           fnName,
@@ -377,6 +378,11 @@ export class QueryPlanner {
                       )
                     : QueryPlannerMathFunctions.hasFunction(fnName)
                     ? QueryPlannerMathFunctions.executeFunction(
+                          fnName,
+                          recursiveExpressions
+                      )
+                    : QueryPlannerDateFunctions.hasFunction(fnName)
+                    ? QueryPlannerDateFunctions.executeFunction(
                           fnName,
                           recursiveExpressions
                       )

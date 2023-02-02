@@ -13,6 +13,7 @@
     },
     "dependencies": {
         "commander": "^10.0.0",
+        "dayjs": "^1.11.7",
         "lodash": "^4.17.21",
         "ts-jest": "^29.0.5",
         "typescript": "^4.9.4"
