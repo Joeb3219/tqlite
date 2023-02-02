@@ -67,11 +67,20 @@ export enum ASTKinds {
     expression_non_front_recursive_1 = "expression_non_front_recursive_1",
     expression_non_front_recursive_2 = "expression_non_front_recursive_2",
     expression_non_front_recursive_3 = "expression_non_front_recursive_3",
+    expression_exists_assertion = "expression_exists_assertion",
+    expression_null_assertion_1 = "expression_null_assertion_1",
+    expression_null_assertion_2 = "expression_null_assertion_2",
+    expression_null_assertion_3 = "expression_null_assertion_3",
+    expression_null_assertion_$0 = "expression_null_assertion_$0",
+    expression_between = "expression_between",
     expression_binary = "expression_binary",
     expression_parens = "expression_parens",
     expression_front_recursive_1 = "expression_front_recursive_1",
     expression_front_recursive_2 = "expression_front_recursive_2",
     expression_front_recursive_3 = "expression_front_recursive_3",
+    expression_front_recursive_4 = "expression_front_recursive_4",
+    expression_front_recursive_5 = "expression_front_recursive_5",
+    expression_front_recursive_6 = "expression_front_recursive_6",
     select_with = "select_with",
     identifier = "identifier",
     num = "num",
@@ -143,6 +152,11 @@ export enum ASTKinds {
     all_literals_46 = "all_literals_46",
     all_literals_47 = "all_literals_47",
     all_literals_48 = "all_literals_48",
+    all_literals_49 = "all_literals_49",
+    all_literals_50 = "all_literals_50",
+    all_literals_51 = "all_literals_51",
+    all_literals_52 = "all_literals_52",
+    all_literals_53 = "all_literals_53",
     literal_order = "literal_order",
     literal_by = "literal_by",
     literal_collate = "literal_collate",
@@ -169,6 +183,11 @@ export enum ASTKinds {
     literal_true = "literal_true",
     literal_false = "literal_false",
     literal_null = "literal_null",
+    literal_not_null = "literal_not_null",
+    literal_is_null = "literal_is_null",
+    literal_is = "literal_is",
+    literal_between = "literal_between",
+    literal_exists = "literal_exists",
     literal_comma = "literal_comma",
     literal_period = "literal_period",
     literal_asterisk = "literal_asterisk",
@@ -465,6 +484,40 @@ export type expression_non_front_recursive =
 export type expression_non_front_recursive_1 = expression_column;
 export type expression_non_front_recursive_2 = expression_unary;
 export type expression_non_front_recursive_3 = value_literal;
+export interface expression_exists_assertion {
+    kind: ASTKinds.expression_exists_assertion;
+    invert: Nullable<literal_not>;
+    stmt_select: stmt_select;
+}
+export type expression_null_assertion =
+    | expression_null_assertion_1
+    | expression_null_assertion_2
+    | expression_null_assertion_3;
+export interface expression_null_assertion_1 {
+    kind: ASTKinds.expression_null_assertion_1;
+    expression: expression_non_front_recursive;
+    not_null: expression_null_assertion_$0;
+}
+export interface expression_null_assertion_2 {
+    kind: ASTKinds.expression_null_assertion_2;
+    expression: expression_non_front_recursive;
+    not_null: literal_not_null;
+}
+export interface expression_null_assertion_3 {
+    kind: ASTKinds.expression_null_assertion_3;
+    expression: expression_non_front_recursive;
+    is_null: literal_is_null;
+}
+export interface expression_null_assertion_$0 {
+    kind: ASTKinds.expression_null_assertion_$0;
+}
+export interface expression_between {
+    kind: ASTKinds.expression_between;
+    expression: expression_non_front_recursive;
+    invert: Nullable<literal_not>;
+    left_expression: expression_non_front_recursive;
+    right_expression: expression;
+}
 export interface expression_binary {
     kind: ASTKinds.expression_binary;
     expression_a: expression_non_front_recursive;
@@ -478,10 +531,16 @@ export interface expression_parens {
 export type expression_front_recursive =
     | expression_front_recursive_1
     | expression_front_recursive_2
-    | expression_front_recursive_3;
-export type expression_front_recursive_1 = expression_parens;
-export type expression_front_recursive_2 = expression_binary;
-export type expression_front_recursive_3 = expression_non_front_recursive;
+    | expression_front_recursive_3
+    | expression_front_recursive_4
+    | expression_front_recursive_5
+    | expression_front_recursive_6;
+export type expression_front_recursive_1 = expression_exists_assertion;
+export type expression_front_recursive_2 = expression_parens;
+export type expression_front_recursive_3 = expression_null_assertion;
+export type expression_front_recursive_4 = expression_between;
+export type expression_front_recursive_5 = expression_binary;
+export type expression_front_recursive_6 = expression_non_front_recursive;
 export type select_with = literal_with;
 export interface identifier {
     kind: ASTKinds.identifier;
@@ -582,7 +641,12 @@ export type all_literals =
     | all_literals_45
     | all_literals_46
     | all_literals_47
-    | all_literals_48;
+    | all_literals_48
+    | all_literals_49
+    | all_literals_50
+    | all_literals_51
+    | all_literals_52
+    | all_literals_53;
 export type all_literals_1 = literal_and;
 export type all_literals_2 = literal_or;
 export type all_literals_3 = literal_plus;
@@ -631,6 +695,11 @@ export type all_literals_45 = literal_first;
 export type all_literals_46 = literal_last;
 export type all_literals_47 = literal_limit;
 export type all_literals_48 = literal_offset;
+export type all_literals_49 = literal_not_null;
+export type all_literals_50 = literal_is_null;
+export type all_literals_51 = literal_is;
+export type all_literals_52 = literal_between;
+export type all_literals_53 = literal_exists;
 export interface literal_order {
     kind: ASTKinds.literal_order;
     literal: string;
@@ -734,6 +803,26 @@ export interface literal_false {
 }
 export interface literal_null {
     kind: ASTKinds.literal_null;
+    literal: string;
+}
+export interface literal_not_null {
+    kind: ASTKinds.literal_not_null;
+    literal: string;
+}
+export interface literal_is_null {
+    kind: ASTKinds.literal_is_null;
+    literal: string;
+}
+export interface literal_is {
+    kind: ASTKinds.literal_is;
+    literal: string;
+}
+export interface literal_between {
+    kind: ASTKinds.literal_between;
+    literal: string;
+}
+export interface literal_exists {
+    kind: ASTKinds.literal_exists;
     literal: string;
 }
 export interface literal_comma {
@@ -2318,6 +2407,186 @@ export class Parser {
     ): Nullable<expression_non_front_recursive_3> {
         return this.matchvalue_literal($$dpth + 1, $$cr);
     }
+    public matchexpression_exists_assertion(
+        $$dpth: number,
+        $$cr?: ErrorTracker
+    ): Nullable<expression_exists_assertion> {
+        return this.run<expression_exists_assertion>($$dpth, () => {
+            let $scope$invert: Nullable<Nullable<literal_not>>;
+            let $scope$stmt_select: Nullable<stmt_select>;
+            let $$res: Nullable<expression_exists_assertion> = null;
+            if (
+                true &&
+                (($scope$invert = this.matchliteral_not($$dpth + 1, $$cr)) ||
+                    true) &&
+                this.matchliteral_exists($$dpth + 1, $$cr) !== null &&
+                this.matchliteral_open_paren($$dpth + 1, $$cr) !== null &&
+                ($scope$stmt_select = this.matchstmt_select(
+                    $$dpth + 1,
+                    $$cr
+                )) !== null &&
+                this.matchliteral_close_paren($$dpth + 1, $$cr) !== null
+            ) {
+                $$res = {
+                    kind: ASTKinds.expression_exists_assertion,
+                    invert: $scope$invert,
+                    stmt_select: $scope$stmt_select,
+                };
+            }
+            return $$res;
+        });
+    }
+    public matchexpression_null_assertion(
+        $$dpth: number,
+        $$cr?: ErrorTracker
+    ): Nullable<expression_null_assertion> {
+        return this.choice<expression_null_assertion>([
+            () => this.matchexpression_null_assertion_1($$dpth + 1, $$cr),
+            () => this.matchexpression_null_assertion_2($$dpth + 1, $$cr),
+            () => this.matchexpression_null_assertion_3($$dpth + 1, $$cr),
+        ]);
+    }
+    public matchexpression_null_assertion_1(
+        $$dpth: number,
+        $$cr?: ErrorTracker
+    ): Nullable<expression_null_assertion_1> {
+        return this.run<expression_null_assertion_1>($$dpth, () => {
+            let $scope$expression: Nullable<expression_non_front_recursive>;
+            let $scope$not_null: Nullable<expression_null_assertion_$0>;
+            let $$res: Nullable<expression_null_assertion_1> = null;
+            if (
+                true &&
+                ($scope$expression = this.matchexpression_non_front_recursive(
+                    $$dpth + 1,
+                    $$cr
+                )) !== null &&
+                ($scope$not_null = this.matchexpression_null_assertion_$0(
+                    $$dpth + 1,
+                    $$cr
+                )) !== null
+            ) {
+                $$res = {
+                    kind: ASTKinds.expression_null_assertion_1,
+                    expression: $scope$expression,
+                    not_null: $scope$not_null,
+                };
+            }
+            return $$res;
+        });
+    }
+    public matchexpression_null_assertion_2(
+        $$dpth: number,
+        $$cr?: ErrorTracker
+    ): Nullable<expression_null_assertion_2> {
+        return this.run<expression_null_assertion_2>($$dpth, () => {
+            let $scope$expression: Nullable<expression_non_front_recursive>;
+            let $scope$not_null: Nullable<literal_not_null>;
+            let $$res: Nullable<expression_null_assertion_2> = null;
+            if (
+                true &&
+                ($scope$expression = this.matchexpression_non_front_recursive(
+                    $$dpth + 1,
+                    $$cr
+                )) !== null &&
+                ($scope$not_null = this.matchliteral_not_null(
+                    $$dpth + 1,
+                    $$cr
+                )) !== null
+            ) {
+                $$res = {
+                    kind: ASTKinds.expression_null_assertion_2,
+                    expression: $scope$expression,
+                    not_null: $scope$not_null,
+                };
+            }
+            return $$res;
+        });
+    }
+    public matchexpression_null_assertion_3(
+        $$dpth: number,
+        $$cr?: ErrorTracker
+    ): Nullable<expression_null_assertion_3> {
+        return this.run<expression_null_assertion_3>($$dpth, () => {
+            let $scope$expression: Nullable<expression_non_front_recursive>;
+            let $scope$is_null: Nullable<literal_is_null>;
+            let $$res: Nullable<expression_null_assertion_3> = null;
+            if (
+                true &&
+                ($scope$expression = this.matchexpression_non_front_recursive(
+                    $$dpth + 1,
+                    $$cr
+                )) !== null &&
+                ($scope$is_null = this.matchliteral_is_null(
+                    $$dpth + 1,
+                    $$cr
+                )) !== null
+            ) {
+                $$res = {
+                    kind: ASTKinds.expression_null_assertion_3,
+                    expression: $scope$expression,
+                    is_null: $scope$is_null,
+                };
+            }
+            return $$res;
+        });
+    }
+    public matchexpression_null_assertion_$0(
+        $$dpth: number,
+        $$cr?: ErrorTracker
+    ): Nullable<expression_null_assertion_$0> {
+        return this.run<expression_null_assertion_$0>($$dpth, () => {
+            let $$res: Nullable<expression_null_assertion_$0> = null;
+            if (
+                true &&
+                this.matchliteral_not($$dpth + 1, $$cr) !== null &&
+                this.matchliteral_null($$dpth + 1, $$cr) !== null
+            ) {
+                $$res = { kind: ASTKinds.expression_null_assertion_$0 };
+            }
+            return $$res;
+        });
+    }
+    public matchexpression_between(
+        $$dpth: number,
+        $$cr?: ErrorTracker
+    ): Nullable<expression_between> {
+        return this.run<expression_between>($$dpth, () => {
+            let $scope$expression: Nullable<expression_non_front_recursive>;
+            let $scope$invert: Nullable<Nullable<literal_not>>;
+            let $scope$left_expression: Nullable<expression_non_front_recursive>;
+            let $scope$right_expression: Nullable<expression>;
+            let $$res: Nullable<expression_between> = null;
+            if (
+                true &&
+                ($scope$expression = this.matchexpression_non_front_recursive(
+                    $$dpth + 1,
+                    $$cr
+                )) !== null &&
+                (($scope$invert = this.matchliteral_not($$dpth + 1, $$cr)) ||
+                    true) &&
+                this.matchliteral_between($$dpth + 1, $$cr) !== null &&
+                ($scope$left_expression =
+                    this.matchexpression_non_front_recursive(
+                        $$dpth + 1,
+                        $$cr
+                    )) !== null &&
+                this.matchliteral_and($$dpth + 1, $$cr) !== null &&
+                ($scope$right_expression = this.matchexpression(
+                    $$dpth + 1,
+                    $$cr
+                )) !== null
+            ) {
+                $$res = {
+                    kind: ASTKinds.expression_between,
+                    expression: $scope$expression,
+                    invert: $scope$invert,
+                    left_expression: $scope$left_expression,
+                    right_expression: $scope$right_expression,
+                };
+            }
+            return $$res;
+        });
+    }
     public matchexpression_binary(
         $$dpth: number,
         $$cr?: ErrorTracker
@@ -2384,24 +2653,45 @@ export class Parser {
             () => this.matchexpression_front_recursive_1($$dpth + 1, $$cr),
             () => this.matchexpression_front_recursive_2($$dpth + 1, $$cr),
             () => this.matchexpression_front_recursive_3($$dpth + 1, $$cr),
+            () => this.matchexpression_front_recursive_4($$dpth + 1, $$cr),
+            () => this.matchexpression_front_recursive_5($$dpth + 1, $$cr),
+            () => this.matchexpression_front_recursive_6($$dpth + 1, $$cr),
         ]);
     }
     public matchexpression_front_recursive_1(
         $$dpth: number,
         $$cr?: ErrorTracker
     ): Nullable<expression_front_recursive_1> {
-        return this.matchexpression_parens($$dpth + 1, $$cr);
+        return this.matchexpression_exists_assertion($$dpth + 1, $$cr);
     }
     public matchexpression_front_recursive_2(
         $$dpth: number,
         $$cr?: ErrorTracker
     ): Nullable<expression_front_recursive_2> {
-        return this.matchexpression_binary($$dpth + 1, $$cr);
+        return this.matchexpression_parens($$dpth + 1, $$cr);
     }
     public matchexpression_front_recursive_3(
         $$dpth: number,
         $$cr?: ErrorTracker
     ): Nullable<expression_front_recursive_3> {
+        return this.matchexpression_null_assertion($$dpth + 1, $$cr);
+    }
+    public matchexpression_front_recursive_4(
+        $$dpth: number,
+        $$cr?: ErrorTracker
+    ): Nullable<expression_front_recursive_4> {
+        return this.matchexpression_between($$dpth + 1, $$cr);
+    }
+    public matchexpression_front_recursive_5(
+        $$dpth: number,
+        $$cr?: ErrorTracker
+    ): Nullable<expression_front_recursive_5> {
+        return this.matchexpression_binary($$dpth + 1, $$cr);
+    }
+    public matchexpression_front_recursive_6(
+        $$dpth: number,
+        $$cr?: ErrorTracker
+    ): Nullable<expression_front_recursive_6> {
         return this.matchexpression_non_front_recursive($$dpth + 1, $$cr);
     }
     public matchselect_with(
@@ -2692,6 +2982,11 @@ export class Parser {
             () => this.matchall_literals_46($$dpth + 1, $$cr),
             () => this.matchall_literals_47($$dpth + 1, $$cr),
             () => this.matchall_literals_48($$dpth + 1, $$cr),
+            () => this.matchall_literals_49($$dpth + 1, $$cr),
+            () => this.matchall_literals_50($$dpth + 1, $$cr),
+            () => this.matchall_literals_51($$dpth + 1, $$cr),
+            () => this.matchall_literals_52($$dpth + 1, $$cr),
+            () => this.matchall_literals_53($$dpth + 1, $$cr),
         ]);
     }
     public matchall_literals_1(
@@ -2981,6 +3276,36 @@ export class Parser {
         $$cr?: ErrorTracker
     ): Nullable<all_literals_48> {
         return this.matchliteral_offset($$dpth + 1, $$cr);
+    }
+    public matchall_literals_49(
+        $$dpth: number,
+        $$cr?: ErrorTracker
+    ): Nullable<all_literals_49> {
+        return this.matchliteral_not_null($$dpth + 1, $$cr);
+    }
+    public matchall_literals_50(
+        $$dpth: number,
+        $$cr?: ErrorTracker
+    ): Nullable<all_literals_50> {
+        return this.matchliteral_is_null($$dpth + 1, $$cr);
+    }
+    public matchall_literals_51(
+        $$dpth: number,
+        $$cr?: ErrorTracker
+    ): Nullable<all_literals_51> {
+        return this.matchliteral_is($$dpth + 1, $$cr);
+    }
+    public matchall_literals_52(
+        $$dpth: number,
+        $$cr?: ErrorTracker
+    ): Nullable<all_literals_52> {
+        return this.matchliteral_between($$dpth + 1, $$cr);
+    }
+    public matchall_literals_53(
+        $$dpth: number,
+        $$cr?: ErrorTracker
+    ): Nullable<all_literals_53> {
+        return this.matchliteral_exists($$dpth + 1, $$cr);
     }
     public matchliteral_order(
         $$dpth: number,
@@ -3764,6 +4089,158 @@ export class Parser {
             ) {
                 $$res = {
                     kind: ASTKinds.literal_null,
+                    literal: $scope$literal,
+                };
+            }
+            return $$res;
+        });
+    }
+    public matchliteral_not_null(
+        $$dpth: number,
+        $$cr?: ErrorTracker
+    ): Nullable<literal_not_null> {
+        return this.run<literal_not_null>($$dpth, () => {
+            let $scope$literal: Nullable<string>;
+            let $$res: Nullable<literal_not_null> = null;
+            if (
+                true &&
+                this.loop<whitespace>(
+                    () => this.matchwhitespace($$dpth + 1, $$cr),
+                    true
+                ) !== null &&
+                ($scope$literal = this.regexAccept(
+                    String.raw`(?:notnull)`,
+                    $$dpth + 1,
+                    $$cr
+                )) !== null &&
+                this.loop<whitespace>(
+                    () => this.matchwhitespace($$dpth + 1, $$cr),
+                    true
+                ) !== null
+            ) {
+                $$res = {
+                    kind: ASTKinds.literal_not_null,
+                    literal: $scope$literal,
+                };
+            }
+            return $$res;
+        });
+    }
+    public matchliteral_is_null(
+        $$dpth: number,
+        $$cr?: ErrorTracker
+    ): Nullable<literal_is_null> {
+        return this.run<literal_is_null>($$dpth, () => {
+            let $scope$literal: Nullable<string>;
+            let $$res: Nullable<literal_is_null> = null;
+            if (
+                true &&
+                this.loop<whitespace>(
+                    () => this.matchwhitespace($$dpth + 1, $$cr),
+                    true
+                ) !== null &&
+                ($scope$literal = this.regexAccept(
+                    String.raw`(?:isnull)`,
+                    $$dpth + 1,
+                    $$cr
+                )) !== null &&
+                this.loop<whitespace>(
+                    () => this.matchwhitespace($$dpth + 1, $$cr),
+                    true
+                ) !== null
+            ) {
+                $$res = {
+                    kind: ASTKinds.literal_is_null,
+                    literal: $scope$literal,
+                };
+            }
+            return $$res;
+        });
+    }
+    public matchliteral_is(
+        $$dpth: number,
+        $$cr?: ErrorTracker
+    ): Nullable<literal_is> {
+        return this.run<literal_is>($$dpth, () => {
+            let $scope$literal: Nullable<string>;
+            let $$res: Nullable<literal_is> = null;
+            if (
+                true &&
+                this.loop<whitespace>(
+                    () => this.matchwhitespace($$dpth + 1, $$cr),
+                    true
+                ) !== null &&
+                ($scope$literal = this.regexAccept(
+                    String.raw`(?:is)`,
+                    $$dpth + 1,
+                    $$cr
+                )) !== null &&
+                this.loop<whitespace>(
+                    () => this.matchwhitespace($$dpth + 1, $$cr),
+                    true
+                ) !== null
+            ) {
+                $$res = { kind: ASTKinds.literal_is, literal: $scope$literal };
+            }
+            return $$res;
+        });
+    }
+    public matchliteral_between(
+        $$dpth: number,
+        $$cr?: ErrorTracker
+    ): Nullable<literal_between> {
+        return this.run<literal_between>($$dpth, () => {
+            let $scope$literal: Nullable<string>;
+            let $$res: Nullable<literal_between> = null;
+            if (
+                true &&
+                this.loop<whitespace>(
+                    () => this.matchwhitespace($$dpth + 1, $$cr),
+                    true
+                ) !== null &&
+                ($scope$literal = this.regexAccept(
+                    String.raw`(?:between)`,
+                    $$dpth + 1,
+                    $$cr
+                )) !== null &&
+                this.loop<whitespace>(
+                    () => this.matchwhitespace($$dpth + 1, $$cr),
+                    true
+                ) !== null
+            ) {
+                $$res = {
+                    kind: ASTKinds.literal_between,
+                    literal: $scope$literal,
+                };
+            }
+            return $$res;
+        });
+    }
+    public matchliteral_exists(
+        $$dpth: number,
+        $$cr?: ErrorTracker
+    ): Nullable<literal_exists> {
+        return this.run<literal_exists>($$dpth, () => {
+            let $scope$literal: Nullable<string>;
+            let $$res: Nullable<literal_exists> = null;
+            if (
+                true &&
+                this.loop<whitespace>(
+                    () => this.matchwhitespace($$dpth + 1, $$cr),
+                    true
+                ) !== null &&
+                ($scope$literal = this.regexAccept(
+                    String.raw`(?:exists)`,
+                    $$dpth + 1,
+                    $$cr
+                )) !== null &&
+                this.loop<whitespace>(
+                    () => this.matchwhitespace($$dpth + 1, $$cr),
+                    true
+                ) !== null
+            ) {
+                $$res = {
+                    kind: ASTKinds.literal_exists,
                     literal: $scope$literal,
                 };
             }

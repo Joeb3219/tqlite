@@ -46,10 +46,12 @@ expression_column := schema_name={whitespace* schema_name=identifier literal_per
 expression_unary := unary_operator=unary_operator expression=expression
 expression_non_front_recursive := expression_column | expression_unary | value_literal
 
+expression_exists_assertion := invert=literal_not? literal_exists literal_open_paren stmt_select=stmt_select literal_close_paren 
+expression_null_assertion := expression=expression_non_front_recursive not_null={literal_not literal_null} | expression=expression_non_front_recursive not_null=literal_not_null | expression=expression_non_front_recursive is_null=literal_is_null
+expression_between := expression=expression_non_front_recursive invert=literal_not? literal_between left_expression=expression_non_front_recursive literal_and right_expression=expression
 expression_binary := expression_a=expression_non_front_recursive operator=binary_operator expression_b=expression
 expression_parens := literal_open_paren expression=expression_front_recursive literal_close_paren
-expression_front_recursive := expression_parens | expression_binary | expression_non_front_recursive
-
+expression_front_recursive := expression_exists_assertion | expression_parens | expression_null_assertion | expression_between | expression_binary | expression_non_front_recursive
 
 select_with := literal_with
 
@@ -68,6 +70,7 @@ all_literals := literal_and | literal_or | literal_plus | literal_minus | litera
                             | literal_right | literal_inner | literal_full | literal_cross | literal_join | literal_from | literal_with 
                             | literal_select | literal_where | literal_all | literal_distinct | literal_as | literal_order | literal_by
                             | literal_collate | literal_asc | literal_desc | literal_nulls | literal_first | literal_last | literal_limit | literal_offset
+                            | literal_not_null | literal_is_null | literal_is | literal_between | literal_exists
 
 literal_order :=  whitespace* literal='order' whitespace*
 literal_by :=  whitespace* literal='by' whitespace*
@@ -95,6 +98,11 @@ literal_not :=  whitespace* literal='not' whitespace*
 literal_true :=  whitespace* literal='true' whitespace*
 literal_false :=  whitespace* literal='false' whitespace*
 literal_null :=  whitespace* literal='null' whitespace*
+literal_not_null :=  whitespace* literal='notnull' whitespace*
+literal_is_null :=  whitespace* literal='isnull' whitespace*
+literal_is :=  whitespace* literal='is' whitespace*
+literal_between :=  whitespace* literal='between' whitespace*
+literal_exists :=  whitespace* literal='exists' whitespace*
 
 literal_comma :=  whitespace* literal=',' whitespace*
 literal_period :=  whitespace* literal='\.' whitespace*

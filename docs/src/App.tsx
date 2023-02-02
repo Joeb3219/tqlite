@@ -174,6 +174,7 @@ const QueryViewer: React.VFC<{ database: DatabaseFile }> = ({ database }) => {
         try {
             const ast = parse(query);
 
+            console.log("ast", ast);
             if (ast.ast?.stmt_list.stmt.kind !== ASTKinds.stmt_select) {
                 return [];
             }

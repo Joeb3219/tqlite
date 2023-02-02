@@ -247,6 +247,75 @@ export class QueryPlanner {
                     ),
                 };
             }
+            case ASTKinds.expression_null_assertion_1:
+            case ASTKinds.expression_null_assertion_2:
+            case ASTKinds.expression_null_assertion_3: {
+                const recursiveExpression = this.evaluateExpression(
+                    row,
+                    expression.expression,
+                    alias
+                );
+                const isAssertingNotNull =
+                    "not_null" in expression && !!expression.not_null;
+                const isExpressionNull =
+                    recursiveExpression.value === null ||
+                    recursiveExpression.value === undefined;
+                return {
+                    name:
+                        alias ??
+                        `${recursiveExpression.name} IS ${
+                            isAssertingNotNull ? "NOT NULL" : "NULL"
+                        }`,
+                    value: isAssertingNotNull
+                        ? !isExpressionNull
+                        : isExpressionNull,
+                };
+            }
+            case ASTKinds.expression_between: {
+                const recursiveExpressionSource = this.evaluateExpression(
+                    row,
+                    expression.expression,
+                    alias
+                );
+                const recursiveExpressionLeft = this.evaluateExpression(
+                    row,
+                    expression.left_expression,
+                    alias
+                );
+                const recursiveExpressionRight = this.evaluateExpression(
+                    row,
+                    expression.right_expression,
+                    alias
+                );
+
+                return {
+                    name:
+                        alias ??
+                        `${recursiveExpressionSource.name} IS BETWEEN ${recursiveExpressionLeft.name} AND ${recursiveExpressionRight.name}`,
+                    value:
+                        recursiveExpressionSource.value >=
+                            recursiveExpressionLeft.value &&
+                        recursiveExpressionSource.value <=
+                            recursiveExpressionRight.value,
+                };
+            }
+            case ASTKinds.expression_exists_assertion: {
+                const innerSelect = new QueryPlanner(
+                    this.database,
+                    expression.stmt_select
+                ).execute();
+
+                return {
+                    name:
+                        alias ??
+                        `${
+                            expression.invert ? "NOT EXISTS" : "EXISTS"
+                        } (SELECT)`,
+                    value: expression.invert
+                        ? !innerSelect.length
+                        : !!innerSelect.length,
+                };
+            }
             case ASTKinds.expression_parens:
                 return this.evaluateExpression(
                     row,
