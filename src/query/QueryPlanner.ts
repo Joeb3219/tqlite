@@ -4,6 +4,7 @@ import {
     ASTKinds,
     binary_operator,
     expression_front_recursive,
+    select_group_by,
     select_limit,
     select_ordering_term,
     select_qualifier,
@@ -13,6 +14,7 @@ import {
 } from "../parser-autogen/parser";
 import { ASTUtil, FlattenedSelectFrom } from "./AST.util";
 import { ResultSet } from "./QueryPlanner.types";
+import { QueryPlannerAggregateFunctions } from "./QueryPlannerAggregateFunctions";
 import { QueryPlannerDateFunctions } from "./QueryPlannerDateFunctions";
 import { QueryPlannerJoin } from "./QueryPlannerJoin";
 import { QueryPlannerMathFunctions } from "./QueryPlannerMathFunctions";
@@ -430,12 +432,76 @@ export class QueryPlanner {
         throw new Error("Unknown expression");
     }
 
+    evaluateExpressionOrAggregate(rows: any[], expression: expression_front_recursive, alias?: string): { name: string; value: any } {
+        if (expression.kind !== ASTKinds.expression_function_invocation) {
+            return this.evaluateExpression(rows[0], expression, alias);
+        }
+
+        const functionName = expression.function_name.value;
+        if (QueryPlannerAggregateFunctions.hasFunction(functionName)) {
+            const recursiveExpressions = expression.expression_list
+                    ? [
+                          expression.expression_list.expression,
+                          ...expression.expression_list.other_expressions.map(
+                              (e) => e.expression
+                          ),
+                      ].map((e) => this.evaluateExpressionOrAggregate(rows, e, alias).value)
+                    : [];
+                    
+            return {
+                name: alias ?? `${functionName}(AGG)`,
+                value: QueryPlannerAggregateFunctions.executeFunction(functionName, rows, recursiveExpressions)
+            }
+        }
+
+        return this.evaluateExpression(rows[0], expression, alias);
+    }
+
+    groupResults(resultSet: ResultSet, groupBy: select_group_by) {
+        const expressions = [groupBy.expression_list.expression, ...groupBy.expression_list.other_expressions.map(e => e.expression)];
+        const resultSetGroups = resultSet.reduce<{ resultSet: ResultSet, key: any[] }[]>((state, row) => {
+            const evaluatedExpressions = expressions.map(e => this.evaluateExpression(row, e).value);
+
+            // Now we attempt to find an island with all of these fields
+            const foundIslandIndex = state.findIndex(island => _.isEqual(island.key, evaluatedExpressions));
+            if (foundIslandIndex === -1) {
+                return [
+                    ...state,
+                    {
+                        key: evaluatedExpressions,
+                        resultSet: [row]
+                    }
+                ]
+            }
+
+            return state.map((island, idx) => idx === foundIslandIndex ? ({
+                key: island.key,
+                resultSet: [...island.resultSet, row]
+            }) : island);
+        }, []);
+
+        const groupByExpression = groupBy.having?.expression;
+        if (groupByExpression) {
+            const filteredGroups = resultSetGroups.filter(group => {
+                const recursiveExpression = this.evaluateExpressionOrAggregate(group.resultSet, groupByExpression);
+                return !!recursiveExpression.value;
+            })
+
+            return filteredGroups.map(group => group.resultSet[0]);
+        }
+
+        return resultSetGroups.map(group => group.resultSet[0]);
+    }
+
+    // SELECT soundex(m.name), random(), datetime("now", "start of year", "-10040 days", "4443434330.4343430 seconds"), m.name, * FROM knex_migrations m JOIN playsets_mods p
     selectColumns(
         resultSet: ResultSet,
         columns: select_result_column[],
-        qualifier?: select_qualifier
+        qualifier?: select_qualifier,
+        groupBy?: select_group_by
     ): any[] {
-        const projection = resultSet.map((row) => {
+        const groupedRows = groupBy ? this.groupResults(resultSet, groupBy) : resultSet;
+        const projection = groupedRows.map((row) => {
             return columns.reduce((state, column) => {
                 if (column.kind === ASTKinds.literal_asterisk) {
                     return {
@@ -539,7 +605,7 @@ export class QueryPlanner {
     }
 
     execute(): any[] {
-        const { where, limit, qualifier } = this.query.select_core;
+        const { where, group_by, limit, qualifier } = this.query.select_core;
         const columns = ASTUtil.flattenSelectRealColumnList(
             this.query.select_core.columns
         );
@@ -557,7 +623,8 @@ export class QueryPlanner {
         const selectionAppliedRows = this.selectColumns(
             orderedResultSet,
             columns,
-            qualifier ?? undefined
+            qualifier ?? undefined,
+            group_by ?? undefined,
         );
 
         return limit

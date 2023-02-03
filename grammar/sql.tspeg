@@ -3,7 +3,7 @@ stmt_list := stmt=stmt other_stmts={ whitespace? literal_semi_colon stmt=stmt }*
 stmt := stmt_select
 stmt_select := select_with=select_with? select_core=select_core
 
-select_core := literal_select qualifier=select_qualifier? columns=select_result_column_list from=select_from? where=select_where? order_by=select_order? limit=select_limit?
+select_core := literal_select qualifier=select_qualifier? columns=select_result_column_list from=select_from? where=select_where? group_by=select_group_by? order_by=select_order? limit=select_limit?
 select_qualifier := literal_all | literal_distinct
 
 select_result_column_list := select_result_column=select_result_column other_result_columns={ whitespace? literal_comma select_result_column=select_result_column }*
@@ -41,6 +41,8 @@ select_ordering_term_nulls_direction := literal_nulls value=literal_first | lite
 select_limit := literal_limit expression=expression offset=select_limit_offset?
 select_limit_offset := literal_offset offset=expression | literal_comma offset=expression
 
+select_group_by := literal_group literal_by expression_list=expression_list having={literal_having expression=expression}?
+
 expression_list := expression=expression other_expressions={ literal_comma expression=expression }*
 expression := expression_front_recursive
 expression_column := schema_name={whitespace* schema_name=identifier literal_period} table_name={whitespace* table_name=identifier literal_period} column_name=identifier | table_name={whitespace* table_name=identifier literal_period}? column_name=identifier 
@@ -74,7 +76,7 @@ all_literals := literal_and | literal_or | literal_plus | literal_minus | litera
                             | literal_right | literal_inner | literal_full | literal_cross | literal_join | literal_from | literal_with 
                             | literal_select | literal_where | literal_all | literal_distinct | literal_as | literal_order | literal_by
                             | literal_collate | literal_asc | literal_desc | literal_nulls | literal_first | literal_last | literal_limit | literal_offset
-                            | literal_not_null | literal_is_null | literal_is | literal_between | literal_exists | literal_in
+                            | literal_not_null | literal_is_null | literal_is | literal_between | literal_exists | literal_in | literal_group | literal_having
 
 literal_order :=  whitespace* literal='order' whitespace*
 literal_by :=  whitespace* literal='by' whitespace*
@@ -86,6 +88,8 @@ literal_first :=  whitespace* literal='first' whitespace*
 literal_last :=  whitespace* literal='last' whitespace*
 literal_limit :=  whitespace* literal='limit' whitespace*
 literal_offset :=  whitespace* literal='offset' whitespace*
+literal_group :=  whitespace* literal='group' whitespace*
+literal_having :=  whitespace* literal='having' whitespace*
 
 literal_and :=  whitespace* literal='and' whitespace*
 literal_or :=  whitespace* literal='or' whitespace*
