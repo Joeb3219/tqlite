@@ -273,11 +273,11 @@ export const ScalarFunctionsMap: {
 
 export class QueryPlannerScalarFunctions {
     static hasFunction(name: string) {
-        return !!ScalarFunctionsMap[name];
+        return !!ScalarFunctionsMap[name.toLowerCase()];
     }
 
     static executeFunction(name: string, args: any[]) {
-        const fn = ScalarFunctionsMap[name];
+        const fn = ScalarFunctionsMap[name.toLowerCase()];
 
         return fn.call(fn, ...args);
     }

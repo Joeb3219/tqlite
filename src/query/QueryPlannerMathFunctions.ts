@@ -35,11 +35,11 @@ export const MathFunctionsMap: {
 
 export class QueryPlannerMathFunctions {
     static hasFunction(name: string) {
-        return !!MathFunctionsMap[name];
+        return !!MathFunctionsMap[name.toLowerCase()];
     }
 
     static executeFunction(name: string, args: any[]) {
-        const fn = MathFunctionsMap[name];
+        const fn = MathFunctionsMap[name.toLowerCase()];
 
         return fn.call(fn, ...args);
     }

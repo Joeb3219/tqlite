@@ -4,6 +4,7 @@ import {
     ASTKinds,
     binary_operator,
     expression_front_recursive,
+    expression_function_invocation,
     select_group_by,
     select_limit,
     select_ordering_term,
@@ -66,7 +67,8 @@ export class QueryPlanner {
                                 join.select_from_join_constraint.kind ===
                                 ASTKinds.select_from_join_constraint_1
                             ) {
-                                return !!this.evaluateExpression(
+                                return !!QueryPlanner.evaluateExpression(
+                                    this.database,
                                     row,
                                     join.select_from_join_constraint.expression
                                 ).value;
@@ -164,12 +166,16 @@ export class QueryPlanner {
             }, [])
             .filter((row) =>
                 where
-                    ? this.evaluateExpression(row, where.expression).value
+                    ? QueryPlanner.evaluateExpression(
+                          this.database,
+                          row,
+                          where.expression
+                      ).value
                     : true
             );
     }
 
-    getTableFromRow(row: any, tableName?: string) {
+    static getTableFromRow(row: any, tableName?: string) {
         if (!tableName) {
             throw new Error("Unnamed tables are not yet supported");
         }
@@ -177,7 +183,8 @@ export class QueryPlanner {
         return row[tableName];
     }
 
-    evaluateExpression(
+    static evaluateExpression(
+        database: DatabaseFile,
         row: any,
         expression: expression_front_recursive,
         alias?: string
@@ -212,7 +219,8 @@ export class QueryPlanner {
                     )?.[expression.column_name.value],
                 };
             case ASTKinds.expression_unary: {
-                const recursiveExpression = this.evaluateExpression(
+                const recursiveExpression = QueryPlanner.evaluateExpression(
+                    database,
                     row,
                     expression.expression,
                     alias
@@ -230,12 +238,14 @@ export class QueryPlanner {
                 break;
             }
             case ASTKinds.expression_binary: {
-                const recursiveExpressionA = this.evaluateExpression(
+                const recursiveExpressionA = QueryPlanner.evaluateExpression(
+                    database,
                     row,
                     expression.expression_a,
                     alias
                 );
-                const recursiveExpressionB = this.evaluateExpression(
+                const recursiveExpressionB = QueryPlanner.evaluateExpression(
+                    database,
                     row,
                     expression.expression_b,
                     alias
@@ -255,7 +265,8 @@ export class QueryPlanner {
             case ASTKinds.expression_null_assertion_1:
             case ASTKinds.expression_null_assertion_2:
             case ASTKinds.expression_null_assertion_3: {
-                const recursiveExpression = this.evaluateExpression(
+                const recursiveExpression = QueryPlanner.evaluateExpression(
+                    database,
                     row,
                     expression.expression,
                     alias
@@ -277,7 +288,8 @@ export class QueryPlanner {
                 };
             }
             case ASTKinds.expression_in: {
-                const recursiveExpression = this.evaluateExpression(
+                const recursiveExpression = QueryPlanner.evaluateExpression(
+                    database,
                     row,
                     expression.expression,
                     alias
@@ -291,15 +303,19 @@ export class QueryPlanner {
                 const recursiveExpressionList = expressionList.map((e) => {
                     if ("stmt_select" in e) {
                         const innerSelect = new QueryPlanner(
-                            this.database,
+                            database,
                             e.stmt_select
                         ).execute();
 
                         return innerSelect;
                     }
 
-                    return this.evaluateExpression(row, e.expression, alias)
-                        .value;
+                    return QueryPlanner.evaluateExpression(
+                        database,
+                        row,
+                        e.expression,
+                        alias
+                    ).value;
                 });
 
                 const isInValues = recursiveExpressionList.includes(
@@ -312,21 +328,26 @@ export class QueryPlanner {
                 };
             }
             case ASTKinds.expression_between: {
-                const recursiveExpressionSource = this.evaluateExpression(
-                    row,
-                    expression.expression,
-                    alias
-                );
-                const recursiveExpressionLeft = this.evaluateExpression(
+                const recursiveExpressionSource =
+                    QueryPlanner.evaluateExpression(
+                        database,
+                        row,
+                        expression.expression,
+                        alias
+                    );
+                const recursiveExpressionLeft = QueryPlanner.evaluateExpression(
+                    database,
                     row,
                     expression.left_expression,
                     alias
                 );
-                const recursiveExpressionRight = this.evaluateExpression(
-                    row,
-                    expression.right_expression,
-                    alias
-                );
+                const recursiveExpressionRight =
+                    QueryPlanner.evaluateExpression(
+                        database,
+                        row,
+                        expression.right_expression,
+                        alias
+                    );
 
                 return {
                     name:
@@ -341,7 +362,7 @@ export class QueryPlanner {
             }
             case ASTKinds.expression_exists_assertion: {
                 const innerSelect = new QueryPlanner(
-                    this.database,
+                    database,
                     expression.stmt_select
                 ).execute();
 
@@ -357,7 +378,8 @@ export class QueryPlanner {
                 };
             }
             case ASTKinds.expression_parens:
-                return this.evaluateExpression(
+                return QueryPlanner.evaluateExpression(
+                    database,
                     row,
                     expression.expression,
                     alias
@@ -369,7 +391,15 @@ export class QueryPlanner {
                           ...expression.expression_list.other_expressions.map(
                               (e) => e.expression
                           ),
-                      ].map((e) => this.evaluateExpression(row, e, alias).value)
+                      ].map(
+                          (e) =>
+                              QueryPlanner.evaluateExpression(
+                                  database,
+                                  row,
+                                  e,
+                                  alias
+                              ).value
+                      )
                     : [];
 
                 const fnName = expression.function_name.value.toLowerCase();
@@ -432,65 +462,119 @@ export class QueryPlanner {
         throw new Error("Unknown expression");
     }
 
-    evaluateExpressionOrAggregate(rows: any[], expression: expression_front_recursive, alias?: string): { name: string; value: any } {
+    static isExpressionAnAggregateExpression(
+        expression: expression_front_recursive
+    ): expression is expression_function_invocation {
         if (expression.kind !== ASTKinds.expression_function_invocation) {
-            return this.evaluateExpression(rows[0], expression, alias);
+            return false;
         }
 
         const functionName = expression.function_name.value;
-        if (QueryPlannerAggregateFunctions.hasFunction(functionName)) {
-            const recursiveExpressions = expression.expression_list
-                    ? [
-                          expression.expression_list.expression,
-                          ...expression.expression_list.other_expressions.map(
-                              (e) => e.expression
-                          ),
-                      ].map((e) => this.evaluateExpressionOrAggregate(rows, e, alias).value)
-                    : [];
-                    
-            return {
-                name: alias ?? `${functionName}(AGG)`,
-                value: QueryPlannerAggregateFunctions.executeFunction(functionName, rows, recursiveExpressions)
-            }
-        }
-
-        return this.evaluateExpression(rows[0], expression, alias);
+        return QueryPlannerAggregateFunctions.hasFunction(functionName);
     }
 
-    groupResults(resultSet: ResultSet, groupBy: select_group_by) {
-        const expressions = [groupBy.expression_list.expression, ...groupBy.expression_list.other_expressions.map(e => e.expression)];
-        const resultSetGroups = resultSet.reduce<{ resultSet: ResultSet, key: any[] }[]>((state, row) => {
-            const evaluatedExpressions = expressions.map(e => this.evaluateExpression(row, e).value);
+    static evaluateExpressionOrAggregate(
+        database: DatabaseFile,
+        rows: any[],
+        expression: expression_front_recursive,
+        alias?: string
+    ): { name: string; value: any } {
+        if (!QueryPlanner.isExpressionAnAggregateExpression(expression)) {
+            return QueryPlanner.evaluateExpression(
+                database,
+                rows[0],
+                expression,
+                alias
+            );
+        }
+
+        const functionName = expression.function_name.value;
+        const expressions = expression.expression_list
+            ? [
+                  expression.expression_list.expression,
+                  ...expression.expression_list.other_expressions.map(
+                      (e) => e.expression
+                  ),
+              ]
+            : [];
+
+        const recursiveExpressions = expressions.map((e) => {
+            return rows.map(
+                (row) =>
+                    QueryPlanner.evaluateExpressionOrAggregate(
+                        database,
+                        [row],
+                        e,
+                        alias
+                    ).value
+            );
+        });
+
+        return {
+            name: alias ?? `${functionName}(AGG)`,
+            value: QueryPlannerAggregateFunctions.executeFunction(
+                functionName,
+                rows,
+                recursiveExpressions
+            ),
+        };
+    }
+
+    groupResults(resultSet: ResultSet, groupBy: select_group_by): ResultSet[] {
+        const expressions = [
+            groupBy.expression_list.expression,
+            ...groupBy.expression_list.other_expressions.map(
+                (e) => e.expression
+            ),
+        ];
+        const resultSetGroups = resultSet.reduce<
+            { resultSet: ResultSet; key: any[] }[]
+        >((state, row) => {
+            const evaluatedExpressions = expressions.map(
+                (e) =>
+                    QueryPlanner.evaluateExpression(this.database, row, e).value
+            );
 
             // Now we attempt to find an island with all of these fields
-            const foundIslandIndex = state.findIndex(island => _.isEqual(island.key, evaluatedExpressions));
+            const foundIslandIndex = state.findIndex((island) =>
+                _.isEqual(island.key, evaluatedExpressions)
+            );
             if (foundIslandIndex === -1) {
                 return [
                     ...state,
                     {
                         key: evaluatedExpressions,
-                        resultSet: [row]
-                    }
-                ]
+                        resultSet: [row],
+                    },
+                ];
             }
 
-            return state.map((island, idx) => idx === foundIslandIndex ? ({
-                key: island.key,
-                resultSet: [...island.resultSet, row]
-            }) : island);
+            return state.map((island, idx) =>
+                idx === foundIslandIndex
+                    ? {
+                          key: island.key,
+                          resultSet: [...island.resultSet, row],
+                      }
+                    : island
+            );
         }, []);
 
         const groupByExpression = groupBy.having?.expression;
         if (groupByExpression) {
-            const filteredGroups = resultSetGroups.filter(group => {
-                const recursiveExpression = this.evaluateExpressionOrAggregate(group.resultSet, groupByExpression);
+            const filteredGroups = resultSetGroups.filter((group) => {
+                const recursiveExpression =
+                    QueryPlanner.evaluateExpressionOrAggregate(
+                        this.database,
+                        group.resultSet,
+                        groupByExpression
+                    );
                 return !!recursiveExpression.value;
-            })
+            });
 
-            return filteredGroups.map(group => group.resultSet[0]);
+            return filteredGroups.map((f) => f.resultSet);
         }
 
-        return resultSetGroups.map(group => group.resultSet[0]);
+        return resultSetGroups.map((f) => f.resultSet);
     }
 
     // SELECT soundex(m.name), random(), datetime("now", "start of year", "-10040 days", "4443434330.4343430 seconds"), m.name, * FROM knex_migrations m JOIN playsets_mods p
@@ -500,13 +584,27 @@ export class QueryPlanner {
         qualifier?: select_qualifier,
         groupBy?: select_group_by
     ): any[] {
-        const groupedRows = groupBy ? this.groupResults(resultSet, groupBy) : resultSet;
-        const projection = groupedRows.map((row) => {
+        const hasAggregateColumn = columns.some((column) =>
+            column.kind === ASTKinds.select_result_column_expression
+                ? QueryPlanner.isExpressionAnAggregateExpression(
+                      column.expression
+                  )
+                : false
+        );
+        const groupedRows: ResultSet[] = groupBy
+            ? this.groupResults(resultSet, groupBy)
+            : hasAggregateColumn
+            ? [resultSet]
+            : resultSet.map((r) => [r]);
+
+        const projection = groupedRows.map((group) => {
+            // For operations that require a single row, we choose one arbitarily.
+            const firstRow = group[0];
             return columns.reduce((state, column) => {
                 if (column.kind === ASTKinds.literal_asterisk) {
                     return {
                         ...state,
-                        ...Object.entries(row).reduce(
+                        ...Object.entries(firstRow).reduce(
                             (innerState, [_tableName, data]) => {
                                 return { ...innerState, ...data };
                             },
@@ -518,15 +616,17 @@ export class QueryPlanner {
                 if (column.kind === ASTKinds.select_result_column_whole_table) {
                     return {
                         ...state,
-                        ...row[column.table_name.value],
+                        ...firstRow[column.table_name.value],
                     };
                 }
 
-                const { name, value } = this.evaluateExpression(
-                    row,
-                    column.expression,
-                    column.column_alias?.value
-                );
+                const { name, value } =
+                    QueryPlanner.evaluateExpressionOrAggregate(
+                        this.database,
+                        group,
+                        column.expression,
+                        column.column_alias?.value
+                    );
                 return {
                     ...state,
                     [name]: value,
@@ -550,8 +650,16 @@ export class QueryPlanner {
 
                 const isAscending =
                     term.sort_direction?.value.kind !== ASTKinds.literal_desc;
-                const evalA = this.evaluateExpression(a, term.expression);
-                const evalB = this.evaluateExpression(b, term.expression);
+                const evalA = QueryPlanner.evaluateExpression(
+                    this.database,
+                    a,
+                    term.expression
+                );
+                const evalB = QueryPlanner.evaluateExpression(
+                    this.database,
+                    b,
+                    term.expression
+                );
 
                 // We're the same, let's look at the next column.
                 if (evalA.value == evalB.value) {
@@ -624,7 +732,7 @@ export class QueryPlanner {
             orderedResultSet,
             columns,
             qualifier ?? undefined,
-            group_by ?? undefined,
+            group_by ?? undefined
         );
 
         return limit

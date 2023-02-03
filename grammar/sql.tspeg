@@ -61,7 +61,7 @@ expression_front_recursive := expression_in | expression_exists_assertion | expr
 
 select_with := literal_with
 
-identifier :=  whitespace* !all_literals value='[a-zA-Z][a-zA-Z0-9_]*'  whitespace*
+identifier :=  whitespace* !all_literals value='[a-zA-Z][_a-zA-Z0-9]*'  whitespace*
 num := whitespace* value='[0-9]+'  whitespace*
 quoted_string := whitespace* value='"(?:[^"\\]|\\.)*"' whitespace* 
 

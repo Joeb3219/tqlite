@@ -81,11 +81,11 @@ export const DateFunctionsMap: {
 
 export class QueryPlannerDateFunctions {
     static hasFunction(name: string) {
-        return !!DateFunctionsMap[name];
+        return !!DateFunctionsMap[name.toLowerCase()];
     }
 
     static executeFunction(name: string, args: any[]) {
-        const fn = DateFunctionsMap[name];
+        const fn = DateFunctionsMap[name.toLowerCase()];
 
         return fn.call(fn, ...args);
     }
