@@ -2,6 +2,7 @@ import {
     ASTKinds,
     BTreePage,
     DatabaseFile,
+    InsertManager,
     MasterSchemaEntry,
     parse,
     QueryPlanner,
@@ -175,19 +176,26 @@ const QueryViewer: React.VFC<{ database: DatabaseFile }> = ({ database }) => {
             const ast = parse(query);
 
             console.log("ast", ast);
-            if (ast.ast?.stmt_list.stmt.kind !== ASTKinds.stmt_select) {
-                return [];
+            if (ast.ast?.stmt_list.stmt.kind === ASTKinds.stmt_select) {
+                const queryPlanner = new QueryPlanner(
+                    database,
+                    ast.ast.stmt_list.stmt
+                );
+
+                const result = queryPlanner.execute();
+                console.log("result", result);
+
+                return result;
             }
 
-            const queryPlanner = new QueryPlanner(
-                database,
-                ast.ast.stmt_list.stmt
-            );
+            if (ast.ast?.stmt_list.stmt.kind === ASTKinds.stmt_insert) {
+                const im = new InsertManager(database, ast.ast.stmt_list.stmt);
+                const result = im.execute();
 
-            const result = queryPlanner.execute();
-            console.log("result", result);
+                console.log(result);
+            }
 
-            return result;
+            return [];
         } catch (err) {
             console.error(err);
             return [];

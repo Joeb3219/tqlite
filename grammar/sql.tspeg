@@ -1,6 +1,6 @@
 start := stmt_list=stmt_list whitespace? $
 stmt_list := stmt=stmt other_stmts={ whitespace? literal_semi_colon stmt=stmt }*
-stmt := stmt_select | stmt_create_table
+stmt := stmt_select | stmt_create_table | stmt_insert
 stmt_select := select_with=select_with? select_core=select_core
 
 select_core := literal_select qualifier=select_qualifier? columns=select_result_column_list from=select_from? where=select_where? group_by=select_group_by? order_by=select_order? limit=select_limit?
@@ -18,7 +18,7 @@ select_from_table_or_subquery := literal_open_paren table_or_subquery=select_fro
                                     | schema_name={whitespace* schema_name=identifier literal_period}? whitespace? table_name=identifier whitespace? alias=identifier? whitespace*
 select_from_join := table_a=select_from_table_or_subquery joins={ select_from_join_operator=select_from_join_operator select_from_table_or_subquery=select_from_table_or_subquery select_from_join_constraint=select_from_join_constraint?  }+
 
-column_name_list            :=      column=identifier other_columns={ literal_comma column=identifier }?
+column_name_list            :=      column=identifier other_columns={ literal_comma column=identifier }*
 select_from_join_constraint :=            literal_on expression=expression
                                     |   literal_using literal_open_paren columns=column_name_list literal_close_paren
 
@@ -105,6 +105,18 @@ stmt_create_table_core := stmt_create_table_core_as | stmt_create_table_core_def
 stmt_create_table_schema_table_name := schema_name={ name=identifier literal_period }? table_name=identifier
 stmt_create_table := literal_create temporary={literal_temp | literal_temporary}? literal_table if_not_exists={literal_if literal_not literal_exists}? name=stmt_create_table_schema_table_name create_table_core=stmt_create_table_core 
 
+stmt_insert_core_value_row := literal_open_paren expressions=expression_list literal_close_paren
+stmt_insert_core_value_rows := row=stmt_insert_core_value_row other_rows={ literal_comma row=stmt_insert_core_value_row }*
+stmt_insert_core_values := literal_values value_rows=stmt_insert_core_value_rows
+stmt_insert_core_stmt := stmt_select=stmt_select
+stmt_insert_core_default := literal_default literal_values
+stmt_insert_core := stmt_insert_core_values | stmt_insert_core_stmt | stmt_insert_core_default
+
+stmt_insert_alias := literal_as alias=identifier
+stmt_insert_core_columns := literal_open_paren columns=column_name_list literal_close_paren
+stmt_insert_schema_table_name := schema_name={ name=identifier literal_period }? table_name=identifier
+stmt_insert := with=select_with? literal_insert literal_into table=stmt_insert_schema_table_name as_alias=stmt_insert_alias? columns=stmt_insert_core_columns? insert_core=stmt_insert_core
+
 select_with := literal_with
 
 identifier_wrapping := literal_backtick | literal_double_quote
@@ -128,11 +140,18 @@ all_literals := literal_and | literal_or | literal_plus | literal_minus | litera
                             | literal_create | literal_table | literal_if | literal_temp | literal_temporary | literal_unique | literal_primary | literal_key
                             | literal_auto_increment | literal_check | literal_default | literal_constraint | literal_foreign | literal_references
                             | literal_delete | literal_cascade | literal_action | literal_no | literal_restrict | literal_update | literal_match 
-                            | literal_deferable | literal_initially | literal_deferred | literal_immediate | literal_set
+                            | literal_deferable | literal_initially | literal_deferred | literal_immediate | literal_set | literal_insert | literal_into
+                            | literal_values
 
 literals_that_do_not_require_space :=   literal_comma | literal_period | literal_asterisk | literal_semi_colon | literal_open_paren | literal_close_paren 
                                         | literal_backtick | literal_double_quote | literal_open_paren | literal_close_paren | literal_plus | literal_minus 
                                         | literal_slash | literal_gte | literal_lte | literal_gt | literal_lt | literal_equal | literal_not_equal 
+
+
+literal_insert :=  whitespace* literal='insert' mandatory_end_space
+literal_into :=  whitespace* literal='into' mandatory_end_space
+literal_values :=  whitespace* literal='values' mandatory_end_space
+
 literal_create :=  whitespace* literal='create' mandatory_end_space
 literal_table :=  whitespace* literal='table' mandatory_end_space
 literal_if :=  whitespace* literal='if' mandatory_end_space

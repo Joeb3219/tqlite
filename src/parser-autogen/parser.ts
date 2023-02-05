@@ -11,6 +11,7 @@ export enum ASTKinds {
     stmt_list_$0 = "stmt_list_$0",
     stmt_1 = "stmt_1",
     stmt_2 = "stmt_2",
+    stmt_3 = "stmt_3",
     stmt_select = "stmt_select",
     select_core = "select_core",
     select_qualifier_1 = "select_qualifier_1",
@@ -173,6 +174,20 @@ export enum ASTKinds {
     stmt_create_table_$0_1 = "stmt_create_table_$0_1",
     stmt_create_table_$0_2 = "stmt_create_table_$0_2",
     stmt_create_table_$1 = "stmt_create_table_$1",
+    stmt_insert_core_value_row = "stmt_insert_core_value_row",
+    stmt_insert_core_value_rows = "stmt_insert_core_value_rows",
+    stmt_insert_core_value_rows_$0 = "stmt_insert_core_value_rows_$0",
+    stmt_insert_core_values = "stmt_insert_core_values",
+    stmt_insert_core_stmt = "stmt_insert_core_stmt",
+    stmt_insert_core_default = "stmt_insert_core_default",
+    stmt_insert_core_1 = "stmt_insert_core_1",
+    stmt_insert_core_2 = "stmt_insert_core_2",
+    stmt_insert_core_3 = "stmt_insert_core_3",
+    stmt_insert_alias = "stmt_insert_alias",
+    stmt_insert_core_columns = "stmt_insert_core_columns",
+    stmt_insert_schema_table_name = "stmt_insert_schema_table_name",
+    stmt_insert_schema_table_name_$0 = "stmt_insert_schema_table_name_$0",
+    stmt_insert = "stmt_insert",
     select_with = "select_with",
     identifier_wrapping_1 = "identifier_wrapping_1",
     identifier_wrapping_2 = "identifier_wrapping_2",
@@ -282,6 +297,9 @@ export enum ASTKinds {
     all_literals_80 = "all_literals_80",
     all_literals_81 = "all_literals_81",
     all_literals_82 = "all_literals_82",
+    all_literals_83 = "all_literals_83",
+    all_literals_84 = "all_literals_84",
+    all_literals_85 = "all_literals_85",
     literals_that_do_not_require_space_1 = "literals_that_do_not_require_space_1",
     literals_that_do_not_require_space_2 = "literals_that_do_not_require_space_2",
     literals_that_do_not_require_space_3 = "literals_that_do_not_require_space_3",
@@ -301,6 +319,9 @@ export enum ASTKinds {
     literals_that_do_not_require_space_17 = "literals_that_do_not_require_space_17",
     literals_that_do_not_require_space_18 = "literals_that_do_not_require_space_18",
     literals_that_do_not_require_space_19 = "literals_that_do_not_require_space_19",
+    literal_insert = "literal_insert",
+    literal_into = "literal_into",
+    literal_values = "literal_values",
     literal_create = "literal_create",
     literal_table = "literal_table",
     literal_if = "literal_if",
@@ -404,9 +425,10 @@ export interface stmt_list_$0 {
     kind: ASTKinds.stmt_list_$0;
     stmt: stmt;
 }
-export type stmt = stmt_1 | stmt_2;
+export type stmt = stmt_1 | stmt_2 | stmt_3;
 export type stmt_1 = stmt_select;
 export type stmt_2 = stmt_create_table;
+export type stmt_3 = stmt_insert;
 export interface stmt_select {
     kind: ASTKinds.stmt_select;
     select_with: Nullable<select_with>;
@@ -505,7 +527,7 @@ export interface select_from_join_$0 {
 export interface column_name_list {
     kind: ASTKinds.column_name_list;
     column: identifier;
-    other_columns: Nullable<column_name_list_$0>;
+    other_columns: column_name_list_$0[];
 }
 export interface column_name_list_$0 {
     kind: ASTKinds.column_name_list_$0;
@@ -1065,6 +1087,62 @@ export type stmt_create_table_$0_2 = literal_temporary;
 export interface stmt_create_table_$1 {
     kind: ASTKinds.stmt_create_table_$1;
 }
+export interface stmt_insert_core_value_row {
+    kind: ASTKinds.stmt_insert_core_value_row;
+    expressions: expression_list;
+}
+export interface stmt_insert_core_value_rows {
+    kind: ASTKinds.stmt_insert_core_value_rows;
+    row: stmt_insert_core_value_row;
+    other_rows: stmt_insert_core_value_rows_$0[];
+}
+export interface stmt_insert_core_value_rows_$0 {
+    kind: ASTKinds.stmt_insert_core_value_rows_$0;
+    row: stmt_insert_core_value_row;
+}
+export interface stmt_insert_core_values {
+    kind: ASTKinds.stmt_insert_core_values;
+    value_rows: stmt_insert_core_value_rows;
+}
+export interface stmt_insert_core_stmt {
+    kind: ASTKinds.stmt_insert_core_stmt;
+    stmt_select: stmt_select;
+}
+export interface stmt_insert_core_default {
+    kind: ASTKinds.stmt_insert_core_default;
+}
+export type stmt_insert_core =
+    | stmt_insert_core_1
+    | stmt_insert_core_2
+    | stmt_insert_core_3;
+export type stmt_insert_core_1 = stmt_insert_core_values;
+export type stmt_insert_core_2 = stmt_insert_core_stmt;
+export type stmt_insert_core_3 = stmt_insert_core_default;
+export interface stmt_insert_alias {
+    kind: ASTKinds.stmt_insert_alias;
+    alias: identifier;
+}
+export interface stmt_insert_core_columns {
+    kind: ASTKinds.stmt_insert_core_columns;
+    columns: column_name_list;
+}
+export interface stmt_insert_schema_table_name {
+    kind: ASTKinds.stmt_insert_schema_table_name;
+    schema_name: Nullable<stmt_insert_schema_table_name_$0>;
+    table_name: identifier;
+}
+export interface stmt_insert_schema_table_name_$0 {
+    kind: ASTKinds.stmt_insert_schema_table_name_$0;
+    name: identifier;
+}
+export interface stmt_insert {
+    kind: ASTKinds.stmt_insert;
+    with: Nullable<select_with>;
+    table: stmt_insert_schema_table_name;
+    as_alias: Nullable<stmt_insert_alias>;
+    columns: Nullable<stmt_insert_core_columns>;
+    insert_core: stmt_insert_core;
+}
 export type select_with = literal_with;
 export type identifier_wrapping = identifier_wrapping_1 | identifier_wrapping_2;
 export type identifier_wrapping_1 = literal_backtick;
@@ -1208,7 +1286,10 @@ export type all_literals =
     | all_literals_79
     | all_literals_80
     | all_literals_81
-    | all_literals_82;
+    | all_literals_82
+    | all_literals_83
+    | all_literals_84
+    | all_literals_85;
 export type all_literals_1 = literal_and;
 export type all_literals_2 = literal_or;
 export type all_literals_3 = literal_plus;
@@ -1291,6 +1372,9 @@ export type all_literals_79 = literal_initially;
 export type all_literals_80 = literal_deferred;
 export type all_literals_81 = literal_immediate;
 export type all_literals_82 = literal_set;
+export type all_literals_83 = literal_insert;
+export type all_literals_84 = literal_into;
+export type all_literals_85 = literal_values;
 export type literals_that_do_not_require_space =
     | literals_that_do_not_require_space_1
     | literals_that_do_not_require_space_2
@@ -1330,6 +1414,18 @@ export type literals_that_do_not_require_space_16 = literal_gt;
 export type literals_that_do_not_require_space_17 = literal_lt;
 export type literals_that_do_not_require_space_18 = literal_equal;
 export type literals_that_do_not_require_space_19 = literal_not_equal;
+export interface literal_insert {
+    kind: ASTKinds.literal_insert;
+    literal: string;
+}
+export interface literal_into {
+    kind: ASTKinds.literal_into;
+    literal: string;
+}
+export interface literal_values {
+    kind: ASTKinds.literal_values;
+    literal: string;
+}
 export interface literal_create {
     kind: ASTKinds.literal_create;
     literal: string;
@@ -1756,6 +1852,7 @@ export class Parser {
         return this.choice<stmt>([
             () => this.matchstmt_1($$dpth + 1, $$cr),
             () => this.matchstmt_2($$dpth + 1, $$cr),
+            () => this.matchstmt_3($$dpth + 1, $$cr),
         ]);
     }
     public matchstmt_1($$dpth: number, $$cr?: ErrorTracker): Nullable<stmt_1> {
@@ -1763,6 +1860,9 @@ export class Parser {
     }
     public matchstmt_2($$dpth: number, $$cr?: ErrorTracker): Nullable<stmt_2> {
         return this.matchstmt_create_table($$dpth + 1, $$cr);
+    }
+    public matchstmt_3($$dpth: number, $$cr?: ErrorTracker): Nullable<stmt_3> {
+        return this.matchstmt_insert($$dpth + 1, $$cr);
     }
     public matchstmt_select(
         $$dpth: number,
@@ -2317,17 +2417,16 @@ export class Parser {
     ): Nullable<column_name_list> {
         return this.run<column_name_list>($$dpth, () => {
             let $scope$column: Nullable<identifier>;
-            let $scope$other_columns: Nullable<Nullable<column_name_list_$0>>;
+            let $scope$other_columns: Nullable<column_name_list_$0[]>;
             let $$res: Nullable<column_name_list> = null;
             if (
                 true &&
                 ($scope$column = this.matchidentifier($$dpth + 1, $$cr)) !==
                     null &&
-                (($scope$other_columns = this.matchcolumn_name_list_$0(
-                    $$dpth + 1,
-                    $$cr
-                )) ||
-                    true)
+                ($scope$other_columns = this.loop<column_name_list_$0>(
+                    () => this.matchcolumn_name_list_$0($$dpth + 1, $$cr),
+                    true
+                )) !== null
             ) {
                 $$res = {
                     kind: ASTKinds.column_name_list,
@@ -5464,6 +5563,317 @@ export class Parser {
             return $$res;
         });
     }
+    public matchstmt_insert_core_value_row(
+        $$dpth: number,
+        $$cr?: ErrorTracker
+    ): Nullable<stmt_insert_core_value_row> {
+        return this.run<stmt_insert_core_value_row>($$dpth, () => {
+            let $scope$expressions: Nullable<expression_list>;
+            let $$res: Nullable<stmt_insert_core_value_row> = null;
+            if (
+                true &&
+                this.matchliteral_open_paren($$dpth + 1, $$cr) !== null &&
+                ($scope$expressions = this.matchexpression_list(
+                    $$dpth + 1,
+                    $$cr
+                )) !== null &&
+                this.matchliteral_close_paren($$dpth + 1, $$cr) !== null
+            ) {
+                $$res = {
+                    kind: ASTKinds.stmt_insert_core_value_row,
+                    expressions: $scope$expressions,
+                };
+            }
+            return $$res;
+        });
+    }
+    public matchstmt_insert_core_value_rows(
+        $$dpth: number,
+        $$cr?: ErrorTracker
+    ): Nullable<stmt_insert_core_value_rows> {
+        return this.run<stmt_insert_core_value_rows>($$dpth, () => {
+            let $scope$row: Nullable<stmt_insert_core_value_row>;
+            let $scope$other_rows: Nullable<stmt_insert_core_value_rows_$0[]>;
+            let $$res: Nullable<stmt_insert_core_value_rows> = null;
+            if (
+                true &&
+                ($scope$row = this.matchstmt_insert_core_value_row(
+                    $$dpth + 1,
+                    $$cr
+                )) !== null &&
+                ($scope$other_rows = this.loop<stmt_insert_core_value_rows_$0>(
+                    () =>
+                        this.matchstmt_insert_core_value_rows_$0(
+                            $$dpth + 1,
+                            $$cr
+                        ),
+                    true
+                )) !== null
+            ) {
+                $$res = {
+                    kind: ASTKinds.stmt_insert_core_value_rows,
+                    row: $scope$row,
+                    other_rows: $scope$other_rows,
+                };
+            }
+            return $$res;
+        });
+    }
+    public matchstmt_insert_core_value_rows_$0(
+        $$dpth: number,
+        $$cr?: ErrorTracker
+    ): Nullable<stmt_insert_core_value_rows_$0> {
+        return this.run<stmt_insert_core_value_rows_$0>($$dpth, () => {
+            let $scope$row: Nullable<stmt_insert_core_value_row>;
+            let $$res: Nullable<stmt_insert_core_value_rows_$0> = null;
+            if (
+                true &&
+                this.matchliteral_comma($$dpth + 1, $$cr) !== null &&
+                ($scope$row = this.matchstmt_insert_core_value_row(
+                    $$dpth + 1,
+                    $$cr
+                )) !== null
+            ) {
+                $$res = {
+                    kind: ASTKinds.stmt_insert_core_value_rows_$0,
+                    row: $scope$row,
+                };
+            }
+            return $$res;
+        });
+    }
+    public matchstmt_insert_core_values(
+        $$dpth: number,
+        $$cr?: ErrorTracker
+    ): Nullable<stmt_insert_core_values> {
+        return this.run<stmt_insert_core_values>($$dpth, () => {
+            let $scope$value_rows: Nullable<stmt_insert_core_value_rows>;
+            let $$res: Nullable<stmt_insert_core_values> = null;
+            if (
+                true &&
+                this.matchliteral_values($$dpth + 1, $$cr) !== null &&
+                ($scope$value_rows = this.matchstmt_insert_core_value_rows(
+                    $$dpth + 1,
+                    $$cr
+                )) !== null
+            ) {
+                $$res = {
+                    kind: ASTKinds.stmt_insert_core_values,
+                    value_rows: $scope$value_rows,
+                };
+            }
+            return $$res;
+        });
+    }
+    public matchstmt_insert_core_stmt(
+        $$dpth: number,
+        $$cr?: ErrorTracker
+    ): Nullable<stmt_insert_core_stmt> {
+        return this.run<stmt_insert_core_stmt>($$dpth, () => {
+            let $scope$stmt_select: Nullable<stmt_select>;
+            let $$res: Nullable<stmt_insert_core_stmt> = null;
+            if (
+                true &&
+                ($scope$stmt_select = this.matchstmt_select(
+                    $$dpth + 1,
+                    $$cr
+                )) !== null
+            ) {
+                $$res = {
+                    kind: ASTKinds.stmt_insert_core_stmt,
+                    stmt_select: $scope$stmt_select,
+                };
+            }
+            return $$res;
+        });
+    }
+    public matchstmt_insert_core_default(
+        $$dpth: number,
+        $$cr?: ErrorTracker
+    ): Nullable<stmt_insert_core_default> {
+        return this.run<stmt_insert_core_default>($$dpth, () => {
+            let $$res: Nullable<stmt_insert_core_default> = null;
+            if (
+                true &&
+                this.matchliteral_default($$dpth + 1, $$cr) !== null &&
+                this.matchliteral_values($$dpth + 1, $$cr) !== null
+            ) {
+                $$res = { kind: ASTKinds.stmt_insert_core_default };
+            }
+            return $$res;
+        });
+    }
+    public matchstmt_insert_core(
+        $$dpth: number,
+        $$cr?: ErrorTracker
+    ): Nullable<stmt_insert_core> {
+        return this.choice<stmt_insert_core>([
+            () => this.matchstmt_insert_core_1($$dpth + 1, $$cr),
+            () => this.matchstmt_insert_core_2($$dpth + 1, $$cr),
+            () => this.matchstmt_insert_core_3($$dpth + 1, $$cr),
+        ]);
+    }
+    public matchstmt_insert_core_1(
+        $$dpth: number,
+        $$cr?: ErrorTracker
+    ): Nullable<stmt_insert_core_1> {
+        return this.matchstmt_insert_core_values($$dpth + 1, $$cr);
+    }
+    public matchstmt_insert_core_2(
+        $$dpth: number,
+        $$cr?: ErrorTracker
+    ): Nullable<stmt_insert_core_2> {
+        return this.matchstmt_insert_core_stmt($$dpth + 1, $$cr);
+    }
+    public matchstmt_insert_core_3(
+        $$dpth: number,
+        $$cr?: ErrorTracker
+    ): Nullable<stmt_insert_core_3> {
+        return this.matchstmt_insert_core_default($$dpth + 1, $$cr);
+    }
+    public matchstmt_insert_alias(
+        $$dpth: number,
+        $$cr?: ErrorTracker
+    ): Nullable<stmt_insert_alias> {
+        return this.run<stmt_insert_alias>($$dpth, () => {
+            let $scope$alias: Nullable<identifier>;
+            let $$res: Nullable<stmt_insert_alias> = null;
+            if (
+                true &&
+                this.matchliteral_as($$dpth + 1, $$cr) !== null &&
+                ($scope$alias = this.matchidentifier($$dpth + 1, $$cr)) !== null
+            ) {
+                $$res = {
+                    kind: ASTKinds.stmt_insert_alias,
+                    alias: $scope$alias,
+                };
+            }
+            return $$res;
+        });
+    }
+    public matchstmt_insert_core_columns(
+        $$dpth: number,
+        $$cr?: ErrorTracker
+    ): Nullable<stmt_insert_core_columns> {
+        return this.run<stmt_insert_core_columns>($$dpth, () => {
+            let $scope$columns: Nullable<column_name_list>;
+            let $$res: Nullable<stmt_insert_core_columns> = null;
+            if (
+                true &&
+                this.matchliteral_open_paren($$dpth + 1, $$cr) !== null &&
+                ($scope$columns = this.matchcolumn_name_list(
+                    $$dpth + 1,
+                    $$cr
+                )) !== null &&
+                this.matchliteral_close_paren($$dpth + 1, $$cr) !== null
+            ) {
+                $$res = {
+                    kind: ASTKinds.stmt_insert_core_columns,
+                    columns: $scope$columns,
+                };
+            }
+            return $$res;
+        });
+    }
+    public matchstmt_insert_schema_table_name(
+        $$dpth: number,
+        $$cr?: ErrorTracker
+    ): Nullable<stmt_insert_schema_table_name> {
+        return this.run<stmt_insert_schema_table_name>($$dpth, () => {
+            let $scope$schema_name: Nullable<
+                Nullable<stmt_insert_schema_table_name_$0>
+            >;
+            let $scope$table_name: Nullable<identifier>;
+            let $$res: Nullable<stmt_insert_schema_table_name> = null;
+            if (
+                true &&
+                (($scope$schema_name =
+                    this.matchstmt_insert_schema_table_name_$0(
+                        $$dpth + 1,
+                        $$cr
+                    )) ||
+                    true) &&
+                ($scope$table_name = this.matchidentifier($$dpth + 1, $$cr)) !==
+                    null
+            ) {
+                $$res = {
+                    kind: ASTKinds.stmt_insert_schema_table_name,
+                    schema_name: $scope$schema_name,
+                    table_name: $scope$table_name,
+                };
+            }
+            return $$res;
+        });
+    }
+    public matchstmt_insert_schema_table_name_$0(
+        $$dpth: number,
+        $$cr?: ErrorTracker
+    ): Nullable<stmt_insert_schema_table_name_$0> {
+        return this.run<stmt_insert_schema_table_name_$0>($$dpth, () => {
+            let $scope$name: Nullable<identifier>;
+            let $$res: Nullable<stmt_insert_schema_table_name_$0> = null;
+            if (
+                true &&
+                ($scope$name = this.matchidentifier($$dpth + 1, $$cr)) !==
+                    null &&
+                this.matchliteral_period($$dpth + 1, $$cr) !== null
+            ) {
+                $$res = {
+                    kind: ASTKinds.stmt_insert_schema_table_name_$0,
+                    name: $scope$name,
+                };
+            }
+            return $$res;
+        });
+    }
+    public matchstmt_insert(
+        $$dpth: number,
+        $$cr?: ErrorTracker
+    ): Nullable<stmt_insert> {
+        return this.run<stmt_insert>($$dpth, () => {
+            let $scope$with: Nullable<Nullable<select_with>>;
+            let $scope$table: Nullable<stmt_insert_schema_table_name>;
+            let $scope$as_alias: Nullable<Nullable<stmt_insert_alias>>;
+            let $scope$columns: Nullable<Nullable<stmt_insert_core_columns>>;
+            let $scope$insert_core: Nullable<stmt_insert_core>;
+            let $$res: Nullable<stmt_insert> = null;
+            if (
+                true &&
+                (($scope$with = this.matchselect_with($$dpth + 1, $$cr)) ||
+                    true) &&
+                this.matchliteral_insert($$dpth + 1, $$cr) !== null &&
+                this.matchliteral_into($$dpth + 1, $$cr) !== null &&
+                ($scope$table = this.matchstmt_insert_schema_table_name(
+                    $$dpth + 1,
+                    $$cr
+                )) !== null &&
+                (($scope$as_alias = this.matchstmt_insert_alias(
+                    $$dpth + 1,
+                    $$cr
+                )) ||
+                    true) &&
+                (($scope$columns = this.matchstmt_insert_core_columns(
+                    $$dpth + 1,
+                    $$cr
+                )) ||
+                    true) &&
+                ($scope$insert_core = this.matchstmt_insert_core(
+                    $$dpth + 1,
+                    $$cr
+                )) !== null
+            ) {
+                $$res = {
+                    kind: ASTKinds.stmt_insert,
+                    with: $scope$with,
+                    table: $scope$table,
+                    as_alias: $scope$as_alias,
+                    columns: $scope$columns,
+                    insert_core: $scope$insert_core,
+                };
+            }
+            return $$res;
+        });
+    }
     public matchselect_with(
         $$dpth: number,
         $$cr?: ErrorTracker
@@ -5855,6 +6265,9 @@ export class Parser {
             () => this.matchall_literals_80($$dpth + 1, $$cr),
             () => this.matchall_literals_81($$dpth + 1, $$cr),
             () => this.matchall_literals_82($$dpth + 1, $$cr),
+            () => this.matchall_literals_83($$dpth + 1, $$cr),
+            () => this.matchall_literals_84($$dpth + 1, $$cr),
+            () => this.matchall_literals_85($$dpth + 1, $$cr),
         ]);
     }
     public matchall_literals_1(
@@ -6349,6 +6762,24 @@ export class Parser {
     ): Nullable<all_literals_82> {
         return this.matchliteral_set($$dpth + 1, $$cr);
     }
+    public matchall_literals_83(
+        $$dpth: number,
+        $$cr?: ErrorTracker
+    ): Nullable<all_literals_83> {
+        return this.matchliteral_insert($$dpth + 1, $$cr);
+    }
+    public matchall_literals_84(
+        $$dpth: number,
+        $$cr?: ErrorTracker
+    ): Nullable<all_literals_84> {
+        return this.matchliteral_into($$dpth + 1, $$cr);
+    }
+    public matchall_literals_85(
+        $$dpth: number,
+        $$cr?: ErrorTracker
+    ): Nullable<all_literals_85> {
+        return this.matchliteral_values($$dpth + 1, $$cr);
+    }
     public matchliterals_that_do_not_require_space(
         $$dpth: number,
         $$cr?: ErrorTracker
@@ -6564,6 +6995,90 @@ export class Parser {
         $$cr?: ErrorTracker
     ): Nullable<literals_that_do_not_require_space_19> {
         return this.matchliteral_not_equal($$dpth + 1, $$cr);
+    }
+    public matchliteral_insert(
+        $$dpth: number,
+        $$cr?: ErrorTracker
+    ): Nullable<literal_insert> {
+        return this.run<literal_insert>($$dpth, () => {
+            let $scope$literal: Nullable<string>;
+            let $$res: Nullable<literal_insert> = null;
+            if (
+                true &&
+                this.loop<whitespace>(
+                    () => this.matchwhitespace($$dpth + 1, $$cr),
+                    true
+                ) !== null &&
+                ($scope$literal = this.regexAccept(
+                    String.raw`(?:insert)`,
+                    $$dpth + 1,
+                    $$cr
+                )) !== null &&
+                this.matchmandatory_end_space($$dpth + 1, $$cr) !== null
+            ) {
+                $$res = {
+                    kind: ASTKinds.literal_insert,
+                    literal: $scope$literal,
+                };
+            }
+            return $$res;
+        });
+    }
+    public matchliteral_into(
+        $$dpth: number,
+        $$cr?: ErrorTracker
+    ): Nullable<literal_into> {
+        return this.run<literal_into>($$dpth, () => {
+            let $scope$literal: Nullable<string>;
+            let $$res: Nullable<literal_into> = null;
+            if (
+                true &&
+                this.loop<whitespace>(
+                    () => this.matchwhitespace($$dpth + 1, $$cr),
+                    true
+                ) !== null &&
+                ($scope$literal = this.regexAccept(
+                    String.raw`(?:into)`,
+                    $$dpth + 1,
+                    $$cr
+                )) !== null &&
+                this.matchmandatory_end_space($$dpth + 1, $$cr) !== null
+            ) {
+                $$res = {
+                    kind: ASTKinds.literal_into,
+                    literal: $scope$literal,
+                };
+            }
+            return $$res;
+        });
+    }
+    public matchliteral_values(
+        $$dpth: number,
+        $$cr?: ErrorTracker
+    ): Nullable<literal_values> {
+        return this.run<literal_values>($$dpth, () => {
+            let $scope$literal: Nullable<string>;
+            let $$res: Nullable<literal_values> = null;
+            if (
+                true &&
+                this.loop<whitespace>(
+                    () => this.matchwhitespace($$dpth + 1, $$cr),
+                    true
+                ) !== null &&
+                ($scope$literal = this.regexAccept(
+                    String.raw`(?:values)`,
+                    $$dpth + 1,
+                    $$cr
+                )) !== null &&
+                this.matchmandatory_end_space($$dpth + 1, $$cr) !== null
+            ) {
+                $$res = {
+                    kind: ASTKinds.literal_values,
+                    literal: $scope$literal,
+                };
+            }
+            return $$res;
+        });
     }
     public matchliteral_create(
         $$dpth: number,
