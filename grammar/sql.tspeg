@@ -1,6 +1,6 @@
 start := stmt_list=stmt_list whitespace? $
 stmt_list := stmt=stmt other_stmts={ whitespace? literal_semi_colon stmt=stmt }*
-stmt := stmt_select
+stmt := stmt_select | stmt_create_table
 stmt_select := select_with=select_with? select_core=select_core
 
 select_core := literal_select qualifier=select_qualifier? columns=select_result_column_list from=select_from? where=select_where? group_by=select_group_by? order_by=select_order? limit=select_limit?
@@ -59,11 +59,59 @@ expression_binary := expression_a=expression_non_front_recursive operator=binary
 expression_parens := literal_open_paren expression=expression_front_recursive literal_close_paren
 expression_front_recursive := expression_in | expression_exists_assertion | expression_parens | expression_null_assertion | expression_between | expression_binary | expression_function_invocation | expression_non_front_recursive
 
+conflict_clause := 'conflict_clause'
+column_constraint_default_value := literal=value_literal | literal_open_paren expression=expression literal_close_paren
+column_constraint_default := literal_default value=column_constraint_default_value
+column_constraint_check := literal_check literal_open_paren expression=expression literal_close_paren
+column_constriant_primary_key := literal_primary literal_key direction={literal_asc | literal_desc}? conflict_clause=conflict_clause? auto_increment=literal_auto_increment?
+column_constraint_unique := literal_unique conflict_clause=conflict_clause?
+column_constraint_not_null := literal_not literal_null conflict_clause=conflict_clause?
+column_constraint_core := column_constraint_not_null | column_constraint_unique | column_constriant_primary_key | column_constraint_check | column_constraint_default
+column_constraint := constraint_name={literal_constraint name=identifier}? column_constraint_core=column_constraint_core
+
+collation := literal_collate identifier
+indexed_column_core := identifier | expression
+indexed_column := indexed_column_core=indexed_column_core collation=collation? direction={literal_asc | literal_desc}?
+indexed_column_list := column=indexed_column other_columns={literal_comma column=indexed_column}*
+
+table_constraint_foreign_key_clause_condition_on_action_set_null := literal_set literal_null
+table_constraint_foreign_key_clause_condition_on_action_set_default := literal_set literal_default
+table_constraint_foreign_key_clause_condition_on_action_cascade := literal_cascade
+table_constraint_foreign_key_clause_condition_on_action_restrict := literal_restrict
+table_constraint_foreign_key_clause_condition_on_action_no_action := literal_no literal_action
+table_constraint_foreign_key_clause_condition_on_action := table_constraint_foreign_key_clause_condition_on_action_set_null | table_constraint_foreign_key_clause_condition_on_action_set_default | table_constraint_foreign_key_clause_condition_on_action_cascade | table_constraint_foreign_key_clause_condition_on_action_restrict | table_constraint_foreign_key_clause_condition_on_action_no_action
+table_constraint_foreign_key_clause_condition_on := literal_on variant={literal_delete | literal_update} action=table_constraint_foreign_key_clause_condition_on_action
+table_constraint_foreign_key_clause_condition_match := literal_match name=identifier
+table_constraint_foreign_key_clause_condition := table_constraint_foreign_key_clause_condition_match | table_constraint_foreign_key_clause_condition_on
+
+table_constraint_foreign_key_clause_condition_deferable := invert=literal_not? literal_deferable initially_immediate={literal_initially literal_immediate}? | invert=literal_not? literal_deferable initially_deferred={literal_initially literal_deferred}?
+table_constraint_foreign_key_clause := literal_references table_name=identifier columns={ literal_open_paren column_names=column_name_list literal_close_paren }? conditions=table_constraint_foreign_key_clause_condition* deferable=table_constraint_foreign_key_clause_condition_deferable?
+table_constraint_foreign_key := literal_foreign literal_key literal_open_paren column_names=column_name_list literal_close_paren clause=table_constraint_foreign_key_clause
+table_constraint_check := literal_check literal_open_paren expression=expression literal_close_paren
+table_constraint_unique := literal_unique literal_open_paren indexed_columns=indexed_column_list literal_close_paren conflict_clause=conflict_clause?
+table_constraint_primary_key := literal_primary literal_key literal_open_paren indexed_columns=indexed_column_list literal_close_paren conflict_clause=conflict_clause?
+table_constraint_core := table_constraint_primary_key | table_constraint_unique | table_constraint_check | table_constraint_foreign_key
+table_constraint := constraint_name={literal_constraint name=identifier}? table_constraint_core=table_constraint_core
+
+column_type_size_constraint := literal_open_paren constraint=num other_constraint={ literal_comma constraint=num }? literal_close_paren
+column_type := name=identifier_no_wrapping null=literal_null? size_constraint=column_type_size_constraint?
+stmt_create_table_core_table_options := 'options'
+stmt_create_table_core_column_definition_or_constraint := table_constraint | stmt_create_table_core_column_definition 
+stmt_create_table_core_column_definition := name=identifier type=column_type? constraints={column_constraint}*
+stmt_create_table_core_column_definition_or_constraint_list := element=stmt_create_table_core_column_definition_or_constraint other_elements={literal_comma element=stmt_create_table_core_column_definition_or_constraint}*
+stmt_create_table_core_as := literal_as select_stmt=stmt_select options=stmt_create_table_core_table_options?
+stmt_create_table_core_definition := literal_open_paren definitions=stmt_create_table_core_column_definition_or_constraint_list literal_close_paren options=stmt_create_table_core_table_options?
+stmt_create_table_core := stmt_create_table_core_as | stmt_create_table_core_definition
+stmt_create_table_schema_table_name := schema_name={ name=identifier literal_period }? table_name=identifier
+stmt_create_table := literal_create temporary={literal_temp | literal_temporary}? literal_table if_not_exists={literal_if literal_not literal_exists}? name=stmt_create_table_schema_table_name create_table_core=stmt_create_table_core 
+
 select_with := literal_with
 
-identifier :=  whitespace* !all_literals value='[a-zA-Z][_a-zA-Z0-9]*'  whitespace*
-num := whitespace* value='[0-9]+'  whitespace*
-quoted_string := whitespace* value='"(?:[^"\\]|\\.)*"' whitespace* 
+identifier_wrapping := literal_backtick | literal_double_quote
+identifier_no_wrapping := whitespace* !all_literals value='[a-zA-Z][_a-zA-Z0-9]*' whitespace*
+identifier :=  whitespace* identifier_wrapping value='[a-zA-Z][_a-zA-Z0-9]*' identifier_wrapping whitespace* | identifier_no_wrapping
+num := whitespace* value='[+-]?[0-9]+'  whitespace*
+quoted_string := whitespace* value='\'(?:[^\'\\]|\\.)*\'' whitespace* 
 
 unary_operator := literal_not
 binary_operator := literal_and | literal_or | literal_plus | literal_minus | literal_asterisk | literal_slash | literal_gte | literal_lte | literal_gt | literal_lt | literal_equal | literal_not_equal 
@@ -77,22 +125,56 @@ all_literals := literal_and | literal_or | literal_plus | literal_minus | litera
                             | literal_select | literal_where | literal_all | literal_distinct | literal_as | literal_order | literal_by
                             | literal_collate | literal_asc | literal_desc | literal_nulls | literal_first | literal_last | literal_limit | literal_offset
                             | literal_not_null | literal_is_null | literal_is | literal_between | literal_exists | literal_in | literal_group | literal_having
+                            | literal_create | literal_table | literal_if | literal_temp | literal_temporary | literal_unique | literal_primary | literal_key
+                            | literal_auto_increment | literal_check | literal_default | literal_constraint | literal_foreign | literal_references
+                            | literal_delete | literal_cascade | literal_action | literal_no | literal_restrict | literal_update | literal_match 
+                            | literal_deferable | literal_initially | literal_deferred | literal_immediate | literal_set
 
-literal_order :=  whitespace* literal='order' whitespace*
-literal_by :=  whitespace* literal='by' whitespace*
-literal_collate :=  whitespace* literal='collate' whitespace*
-literal_asc :=  whitespace* literal='asc' whitespace*
-literal_desc :=  whitespace* literal='desc' whitespace*
-literal_nulls :=  whitespace* literal='nulls' whitespace*
-literal_first :=  whitespace* literal='first' whitespace*
-literal_last :=  whitespace* literal='last' whitespace*
-literal_limit :=  whitespace* literal='limit' whitespace*
-literal_offset :=  whitespace* literal='offset' whitespace*
-literal_group :=  whitespace* literal='group' whitespace*
-literal_having :=  whitespace* literal='having' whitespace*
+literals_that_do_not_require_space :=   literal_comma | literal_period | literal_asterisk | literal_semi_colon | literal_open_paren | literal_close_paren 
+                                        | literal_backtick | literal_double_quote | literal_open_paren | literal_close_paren | literal_plus | literal_minus 
+                                        | literal_slash | literal_gte | literal_lte | literal_gt | literal_lt | literal_equal | literal_not_equal 
+literal_create :=  whitespace* literal='create' mandatory_end_space
+literal_table :=  whitespace* literal='table' mandatory_end_space
+literal_if :=  whitespace* literal='if' mandatory_end_space
+literal_temp :=  whitespace* literal='temp' mandatory_end_space
+literal_temporary :=  whitespace* literal='temporary' mandatory_end_space
+literal_unique :=  whitespace* literal='unique' mandatory_end_space
+literal_primary :=  whitespace* literal='primary' mandatory_end_space
+literal_key :=  whitespace* literal='key' mandatory_end_space
+literal_check :=  whitespace* literal='check' mandatory_end_space
+literal_default :=  whitespace* literal='default' mandatory_end_space
+literal_constraint :=  whitespace* literal='constraint' mandatory_end_space
+literal_foreign :=  whitespace* literal='foreign' mandatory_end_space
+literal_references :=  whitespace* literal='references' mandatory_end_space
+literal_auto_increment :=  whitespace* literal='autoincrement' mandatory_end_space
+literal_delete :=  whitespace* literal='delete' mandatory_end_space
+literal_cascade :=  whitespace* literal='cascade' mandatory_end_space
+literal_action :=  whitespace* literal='action' mandatory_end_space
+literal_no :=  whitespace* literal='no' mandatory_end_space
+literal_restrict :=  whitespace* literal='restrict' mandatory_end_space
+literal_update :=  whitespace* literal='update' mandatory_end_space
+literal_match :=  whitespace* literal='match' mandatory_end_space
+literal_deferable :=  whitespace* literal='deferable' mandatory_end_space
+literal_initially :=  whitespace* literal='initially' mandatory_end_space
+literal_deferred :=  whitespace* literal='deferred' mandatory_end_space
+literal_immediate :=  whitespace* literal='immediate' mandatory_end_space
+literal_set :=  whitespace* literal='set' mandatory_end_space
 
-literal_and :=  whitespace* literal='and' whitespace*
-literal_or :=  whitespace* literal='or' whitespace*
+literal_order :=  whitespace* literal='order' mandatory_end_space
+literal_by :=  whitespace* literal='by' mandatory_end_space
+literal_collate :=  whitespace* literal='collate' mandatory_end_space
+literal_asc :=  whitespace* literal='asc' mandatory_end_space
+literal_desc :=  whitespace* literal='desc' mandatory_end_space
+literal_nulls :=  whitespace* literal='nulls' mandatory_end_space
+literal_first :=  whitespace* literal='first' mandatory_end_space
+literal_last :=  whitespace* literal='last' mandatory_end_space
+literal_limit :=  whitespace* literal='limit' mandatory_end_space
+literal_offset :=  whitespace* literal='offset' mandatory_end_space
+literal_group :=  whitespace* literal='group' mandatory_end_space
+literal_having :=  whitespace* literal='having' mandatory_end_space
+
+literal_and :=  whitespace* literal='and' mandatory_end_space
+literal_or :=  whitespace* literal='or' mandatory_end_space
 literal_plus :=  whitespace* literal='\+' whitespace*
 literal_minus :=  whitespace* literal='-' whitespace*
 literal_slash :=  whitespace* literal='/' whitespace*
@@ -102,16 +184,16 @@ literal_gt :=  whitespace* literal='>' whitespace*
 literal_lt :=  whitespace* literal='<' whitespace*
 literal_equal :=  whitespace* literal='=' whitespace*
 literal_not_equal :=  whitespace* literal='!=' whitespace* | whitespace* literal='<>' whitespace*
-literal_not :=  whitespace* literal='not' whitespace*
-literal_true :=  whitespace* literal='true' whitespace*
-literal_false :=  whitespace* literal='false' whitespace*
-literal_null :=  whitespace* literal='null' whitespace*
-literal_not_null :=  whitespace* literal='notnull' whitespace*
-literal_is_null :=  whitespace* literal='isnull' whitespace*
-literal_is :=  whitespace* literal='is' whitespace*
-literal_between :=  whitespace* literal='between' whitespace*
-literal_exists :=  whitespace* literal='exists' whitespace*
-literal_in :=  whitespace* literal='in' whitespace*
+literal_not :=  whitespace* literal='not' mandatory_end_space
+literal_true :=  whitespace* literal='true' mandatory_end_space
+literal_false :=  whitespace* literal='false' mandatory_end_space
+literal_null :=  whitespace* literal='null' mandatory_end_space
+literal_not_null :=  whitespace* literal='notnull' mandatory_end_space
+literal_is_null :=  whitespace* literal='isnull' mandatory_end_space
+literal_is :=  whitespace* literal='is' mandatory_end_space
+literal_between :=  whitespace* literal='between' mandatory_end_space
+literal_exists :=  whitespace* literal='exists' mandatory_end_space
+literal_in :=  whitespace* literal='in' mandatory_end_space
 
 literal_comma :=  whitespace* literal=',' whitespace*
 literal_period :=  whitespace* literal='\.' whitespace*
@@ -119,24 +201,28 @@ literal_asterisk :=  whitespace* literal='\*' whitespace*
 literal_semi_colon :=  whitespace* literal=';' whitespace*
 literal_open_paren :=  whitespace* literal='\(' whitespace*
 literal_close_paren :=  whitespace* literal='\)' whitespace*
+literal_backtick :=  whitespace* literal='`' whitespace*
+literal_double_quote :=  whitespace* literal='"' whitespace*
 
-literal_on :=  whitespace* literal='on' whitespace*
-literal_using :=  whitespace* literal='using' whitespace*
-literal_natural :=  whitespace* literal='natural' whitespace*
-literal_outer :=  whitespace* literal='outer' whitespace*
-literal_left :=  whitespace* literal='left' whitespace*
-literal_right :=  whitespace* literal='right' whitespace*
-literal_inner :=  whitespace* literal='inner' whitespace*
-literal_full :=  whitespace* literal='full' whitespace*
-literal_cross :=  whitespace* literal='cross' whitespace*
-literal_join :=  whitespace* literal='join' whitespace*
+literal_on :=  whitespace* literal='on' mandatory_end_space
+literal_using :=  whitespace* literal='using' mandatory_end_space
+literal_natural :=  whitespace* literal='natural' mandatory_end_space
+literal_outer :=  whitespace* literal='outer' mandatory_end_space
+literal_left :=  whitespace* literal='left' mandatory_end_space
+literal_right :=  whitespace* literal='right' mandatory_end_space
+literal_inner :=  whitespace* literal='inner' mandatory_end_space
+literal_full :=  whitespace* literal='full' mandatory_end_space
+literal_cross :=  whitespace* literal='cross' mandatory_end_space
+literal_join :=  whitespace* literal='join' mandatory_end_space
 
-literal_from :=  whitespace* literal='from' whitespace*
-literal_with :=  whitespace* literal='with' whitespace*
-literal_select :=  whitespace* literal='select' whitespace*
-literal_where :=  whitespace* literal='where' whitespace*
-literal_all :=  whitespace* literal='all' whitespace*
-literal_distinct :=  whitespace* literal='distinct' whitespace*
-literal_as :=  whitespace* literal='as' whitespace*
+literal_from :=  whitespace* literal='from' mandatory_end_space
+literal_with :=  whitespace* literal='with' mandatory_end_space
+literal_select :=  whitespace* literal='select' mandatory_end_space
+literal_where :=  whitespace* literal='where' mandatory_end_space
+literal_all :=  whitespace* literal='all' mandatory_end_space
+literal_distinct :=  whitespace* literal='distinct' mandatory_end_space
+literal_as :=  whitespace* literal='as' mandatory_end_space
 
-whitespace := ' '
+mandatory_end_space := &literals_that_do_not_require_space whitespace* | whitespace+
+
+whitespace := '[ \r\n]'

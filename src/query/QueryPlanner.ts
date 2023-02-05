@@ -425,8 +425,9 @@ export class QueryPlanner {
                     value,
                 };
             }
-            case ASTKinds.identifier:
-                throw new Error("Unexpected column type identifier");
+            case ASTKinds.identifier_1:
+            case ASTKinds.identifier_no_wrapping:
+                    throw new Error("Unexpected column type identifier");
             case ASTKinds.num:
                 return {
                     name: alias ?? expression.value,

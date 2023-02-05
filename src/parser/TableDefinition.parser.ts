@@ -1,3 +1,5 @@
+import { parse } from "../parser-autogen/parser";
+
 type TokenType =
     | "CREATE"
     | "TABLE"
@@ -195,9 +197,24 @@ export class TableDefinitionParser {
         }
     }
 
+    tryOtherParser() {
+        console.log('sql', this.sql);
+        try {
+            const result = parse(this.sql);
+            if (result.errs.length) {
+                console.error(`ERRORS`, result.errs.map(err => ({ pos: err.pos, str: this.sql.substring(err.pos.offset), errs: err.expmatches })))
+            }
+        } catch(err) {
+            console.error(err);
+        }
+    }
+
     private parseRoot() {
         this.currentTokenPosition = 0;
         this.tableDefinition = undefined;
+
+        
+        this.tryOtherParser();
 
         this.optionallyConsumeOfType("CREATE");
         this.consumeOfType("TABLE");
