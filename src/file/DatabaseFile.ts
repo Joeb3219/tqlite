@@ -103,7 +103,7 @@ export class DatabaseFile extends File {
 
         try {
             const tableParser = new TableDefinitionParser(sql);
-            return tableParser.tableDefinition;
+            return tableParser.execute();
         } catch (err) {
             console.warn("Failed to parse table definition", err);
             return undefined;

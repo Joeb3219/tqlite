@@ -1,233 +1,171 @@
-import { parse } from "../parser-autogen/parser";
+import {
+    ASTKinds,
+    column_constraint,
+    parse,
+    stmt_create_table_core,
+    stmt_create_table_core_column_definition,
+    table_constraint,
+} from "../parser-autogen/parser";
+import { ParserUtil } from "./Parser.util";
 
-type TokenType =
-    | "CREATE"
-    | "TABLE"
-    | "BACKTICK"
-    | "("
-    | ")"
-    | ","
-    | "identifier"
-    | "number";
-
-const TokenParseMap: Record<TokenType, (str: string) => boolean> = {
-    CREATE: (str) => str === "CREATE",
-    TABLE: (str) => str === "TABLE",
-    BACKTICK: (str) => str === `\`` || str === '"',
-    "(": (str) => str === "(",
-    ")": (str) => str === ")",
-    ",": (str) => str === ",",
-    identifier: (str) => {
-        const match = str.match(/[a-zA-Z_0-9'\[\]]*$/);
-        return !!match && match[0].length === str.length;
-    },
-    number: (str) =>
-        /^\s*[+-]?(\d+|\d*\.\d+|\d+\.\d*)([Ee][+-]?\d+)?\s*$/.test(str),
-};
-
-type Token<T extends TokenType = TokenType> = {
-    type: T;
-    lexeme: string;
-};
+export type ColumnAffinity = "text" | "numeric" | "integer" | "real" | "blob";
 
 export type TableColumnDefinition = {
     name: string;
-    type: string;
+    type?: string;
+    affinity: ColumnAffinity;
+    constraints: column_constraint[];
 };
 
 export type TableDefinition = {
+    schemaName?: string;
     tableName: string;
+    temporary: boolean;
+    // Internal tables have names that start with sqlite_
+    isInternal: boolean;
     columns: TableColumnDefinition[];
+    constraints: table_constraint[];
+    createIfNotExists: boolean;
 };
 
 export class TableDefinitionParser {
-    tokens: Token[] = [];
-    tableDefinition: TableDefinition | undefined = undefined;
-    currentTokenPosition: number = 0;
+    constructor(private readonly sql: string) {}
 
-    constructor(private readonly sql: string) {
-        this.setTokens();
-        this.parseRoot();
-    }
+    // See section 3.1, "Determination Of Column Affinity" of https://www.sqlite.org/datatype3.html
+    static typeToAffinity(type?: string): ColumnAffinity {
+        const normalizedType = type?.toLowerCase();
 
-    private isWhitespace(str: string): boolean {
-        return str === " " || str === "\t" || str === "\r";
-    }
-
-    private isNewLine(str: string): boolean {
-        return str === "\n";
-    }
-
-    private isEndOfFile(str: string): boolean {
-        return str === "\0";
-    }
-
-    private readUntilDelimter(startPosition: number): string {
-        let endPosition = startPosition + 1;
-        while (endPosition < this.sql.length) {
-            const endChar = this.sql[endPosition];
-            if (
-                this.isWhitespace(endChar) ||
-                this.isNewLine(endChar) ||
-                this.isEndOfFile(endChar)
-            ) {
-                break;
-            }
-
-            endPosition++;
+        // Rule 1 -- if it contains "int", it must be an INTEGER.
+        if (normalizedType?.includes("int")) {
+            return "integer";
         }
 
-        return this.sql.substring(startPosition, endPosition);
-    }
-
-    private findTokenAtIndex(index: number): Token {
-        const fullSubstr = this.readUntilDelimter(index);
-        for (let i = fullSubstr.length; i > 0; i--) {
-            const substr = fullSubstr.substring(0, i);
-            const matched = Object.entries(TokenParseMap).find((entry) =>
-                entry[1](substr)
-            );
-
-            if (matched) {
-                return {
-                    type: matched[0] as TokenType,
-                    lexeme: substr,
-                };
-            }
+        // Rule 2 -- "char" "clob" and "text" are TEXT.
+        if (
+            ["char", "clob", "text"].some((candidate) =>
+                normalizedType?.includes(candidate)
+            )
+        ) {
+            return "text";
         }
 
-        throw new Error(
-            `Failed to find token beginning at index ${index}: ${fullSubstr}; ${this.sql}`
+        // Rule 3 -- "blob" and undefined types are BLOB.
+        if (normalizedType?.includes("blob") || !normalizedType) {
+            return "blob";
+        }
+
+        // Rule 4 -- "doub" "floa" and "real" are REAL.
+        if (
+            ["doub", "floa", "real"].some((candidate) =>
+                normalizedType.includes(candidate)
+            )
+        ) {
+            return "real";
+        }
+
+        // Rule 5 -- we default to NUMERIC.
+        return "numeric";
+    }
+
+    static processColumn(
+        columnDef: stmt_create_table_core_column_definition
+    ): TableColumnDefinition {
+        const { name, type, constraints } = columnDef;
+
+        const columnType = type?.name.value;
+
+        return {
+            constraints,
+            name: name.value,
+            type: columnType,
+            affinity: TableDefinitionParser.typeToAffinity(columnType),
+        };
+    }
+
+    static processColumnsAndConstraints(core: stmt_create_table_core): {
+        columns: TableColumnDefinition[];
+        constraints: table_constraint[];
+    } {
+        if (core.kind === ASTKinds.stmt_create_table_core_as) {
+            // TODO: support `create table as`
+            return {
+                columns: [],
+                constraints: [],
+            };
+        }
+
+        const elements = [
+            core.definitions.element,
+            ...core.definitions.other_elements.map((e) => e.element),
+        ];
+        return elements.reduce<{
+            columns: TableColumnDefinition[];
+            constraints: table_constraint[];
+        }>(
+            (state, element) => {
+                if (element.kind === ASTKinds.table_constraint) {
+                    return {
+                        columns: state.columns,
+                        constraints: [...state.constraints, element],
+                    };
+                } else {
+                    return {
+                        columns: [
+                            ...state.columns,
+                            TableDefinitionParser.processColumn(element),
+                        ],
+                        constraints: state.constraints,
+                    };
+                }
+            },
+            {
+                columns: [],
+                constraints: [],
+            }
         );
     }
 
-    private setTokens() {
-        this.tokens = [];
-
-        let currentIndex = 0;
-        while (currentIndex < this.sql.length) {
-            const char = this.sql[currentIndex];
-            if (
-                this.isWhitespace(char) ||
-                this.isEndOfFile(char) ||
-                this.isNewLine(char)
-            ) {
-                currentIndex++;
-                continue;
-            }
-
-            const token = this.findTokenAtIndex(currentIndex);
-            this.tokens.push(token);
-            currentIndex += token.lexeme.length;
+    execute(): TableDefinition | undefined {
+        const parsed = parse(this.sql);
+        if (parsed.errs.length || !parsed.ast) {
+            ParserUtil.reportParseError(this.sql, parsed);
+            return;
         }
-    }
 
-    private get token(): Token {
-        return this.tokens[this.currentTokenPosition];
-    }
+        const stmts = [
+            parsed.ast.stmt_list.stmt,
+            ...parsed.ast.stmt_list.other_stmts,
+        ];
+        const firstStatement = stmts[0];
 
-    private consumeOfType<T extends TokenType>(type: T): Token<T> {
-        const currentToken = this.token;
-        if (currentToken.type !== type) {
+        if (stmts.length !== 1 || !firstStatement) {
             throw new Error(
-                `Expected to find token of type ${type}, but found ${currentToken.type}`
+                `Expected to find 1 statement, but found ${stmts.length}`
             );
         }
 
-        this.currentTokenPosition++;
-        return currentToken as Token<T>;
-    }
-
-    private optionallyConsumeOfType<T extends TokenType>(
-        type: T
-    ): Token<T> | undefined {
-        const currentToken = this.token;
-        if (currentToken.type !== type) {
-            return undefined;
+        if (firstStatement.kind !== ASTKinds.stmt_create_table) {
+            throw new Error(
+                `Expected create table declaration, but found ${firstStatement.kind}`
+            );
         }
 
-        this.currentTokenPosition++;
-        return currentToken as Token<T>;
-    }
+        const { name, temporary, create_table_core, if_not_exists } =
+            firstStatement;
+        const tableName = name.table_name.value;
+        const { columns, constraints } =
+            TableDefinitionParser.processColumnsAndConstraints(
+                create_table_core
+            );
 
-    // CREATE TABLE `dlc` (`id` char(36) not null, `name` varchar(255) not null, `dirPath` varchar(255) not null, primary key (`id`))
-    private parseColumnDefinitions() {
-        let openCount = 0;
-        while (this.token) {
-            this.optionallyConsumeOfType("BACKTICK");
-            const columnName = this.consumeOfType("identifier");
-            this.optionallyConsumeOfType("BACKTICK");
-
-            let typeStringParts: string[] = [];
-            while (this.token) {
-                if (this.token.type === "identifier") {
-                    typeStringParts.push(this.token.lexeme);
-                    this.consumeOfType("identifier");
-                } else if (this.token.type === "number") {
-                    typeStringParts.push(this.token.lexeme);
-                    this.consumeOfType("number");
-                } else if (this.token.type === "(") {
-                    typeStringParts.push(this.token.lexeme);
-                    openCount++;
-                    this.consumeOfType("(");
-                } else if (this.token.type === ")") {
-                    // We've closed all of the braces, we're finished.
-                    if (openCount === 0) {
-                        break;
-                    } else {
-                        typeStringParts.push(this.token.lexeme);
-                        openCount--;
-                        this.consumeOfType(")");
-                    }
-                } else {
-                    break;
-                }
-            }
-
-            this.tableDefinition?.columns.push({
-                name: columnName.lexeme,
-                type: typeStringParts.join(" "),
-            });
-
-            if (this.token?.type !== ",") {
-                break;
-            }
-
-            this.consumeOfType(",");
-        }
-    }
-
-    tryOtherParser() {
-        console.log('sql', this.sql);
-        try {
-            const result = parse(this.sql);
-            if (result.errs.length) {
-                console.error(`ERRORS`, result.errs.map(err => ({ pos: err.pos, str: this.sql.substring(err.pos.offset), errs: err.expmatches })))
-            }
-        } catch(err) {
-            console.error(err);
-        }
-    }
-
-    private parseRoot() {
-        this.currentTokenPosition = 0;
-        this.tableDefinition = undefined;
-
-        
-        this.tryOtherParser();
-
-        this.optionallyConsumeOfType("CREATE");
-        this.consumeOfType("TABLE");
-        this.optionallyConsumeOfType("BACKTICK");
-        const tableName = this.consumeOfType("identifier");
-
-        this.tableDefinition = {
-            tableName: tableName.lexeme,
-            columns: [],
+        return {
+            tableName,
+            columns,
+            constraints,
+            schemaName: name.schema_name?.name.value,
+            isInternal: name.table_name.value.startsWith("sqlite_"),
+            temporary: !!temporary,
+            createIfNotExists: !!if_not_exists,
         };
-
-        this.optionallyConsumeOfType("BACKTICK");
-        this.consumeOfType("(");
-        this.parseColumnDefinitions();
     }
 }
