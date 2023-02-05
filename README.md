@@ -9,7 +9,7 @@ Currently, the following is supported:
 -   Reading the sqlite_schema
 -   Reading database tables
 -   Reading database views
--   Executing very basic queries via an abstracted mechanism
+-   Executing ~50-75% of SELECT statements
 
 ## Currently In-Progress
 
