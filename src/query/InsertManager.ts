@@ -1,3 +1,4 @@
+import _ from "lodash";
 import { DatabaseFile } from "../file/DatabaseFile";
 import {
     ASTKinds,
@@ -105,7 +106,7 @@ export class InsertManager {
                       appliedColumnNames.some((ac) => ac.value === column.name)
                   )
                 : tableDefinition.columns;
-        return rows.map<InsertRow>((valueRow) => {
+        return rows.map<InsertRow>((valueRow, idx) => {
             const defaultRow =
                 InsertManager.constructDefaultRow(tableDefinition);
             const expressions = [
@@ -121,7 +122,7 @@ export class InsertManager {
                 );
             }
 
-            return columns.reduce((row, column, idx) => {
+            const row = columns.reduce((row, column, idx) => {
                 const valueExpression = expressions[idx];
                 return {
                     ...row,
@@ -131,7 +132,166 @@ export class InsertManager {
                     ),
                 };
             }, defaultRow);
+
+            return {
+                rowId: idx,
+                row,
+            };
         });
+    }
+
+    static validateTableConstraints(
+        database: DatabaseFile,
+        tableDefinition: TableDefinition,
+        insertRow: InsertRow
+    ) {
+        for (const constraint of tableDefinition.constraints) {
+            const constraintErrorPrefix = constraint.constraint_name
+                ? `CONSTRAINT ${constraint.constraint_name.name.value}: `
+                : "";
+            const core = constraint.table_constraint_core;
+            switch (core.kind) {
+                case ASTKinds.table_constraint_foreign_key: {
+                    throw new Error(
+                        "Unimplemented table foreign key constraint"
+                    );
+                }
+                case ASTKinds.table_constraint_check: {
+                    const result = QueryPlanner.evaluateExpression(
+                        database,
+                        insertRow.row,
+                        core.expression
+                    );
+                    if (!result.value) {
+                        throw new Error(
+                            `${constraintErrorPrefix}Row is violation CHECK (${result.name}) constriant.`
+                        );
+                    }
+                    break;
+                }
+                case ASTKinds.table_constraint_unique: {
+                    const indexedColumns = [
+                        core.indexed_columns.column,
+                        ...core.indexed_columns.other_columns.map(
+                            (c) => c.column
+                        ),
+                    ];
+                    const insertedRowValues = indexedColumns.map(
+                        (column) =>
+                            QueryPlanner.evaluateExpression(
+                                database,
+                                insertRow.row,
+                                column.indexed_column_core
+                            ).value
+                    );
+                    const conflictingRows = database.getRows(
+                        tableDefinition.tableName,
+                        (row) => {
+                            const rowValues = indexedColumns.map(
+                                (column) =>
+                                    QueryPlanner.evaluateExpression(
+                                        database,
+                                        row,
+                                        column.indexed_column_core
+                                    ).value
+                            );
+
+                            return _.isEqual(rowValues, insertedRowValues);
+                        }
+                    );
+                    if (conflictingRows.length > 0) {
+                        throw new Error(
+                            `${constraintErrorPrefix}Row is violating ${
+                                core.kind === ASTKinds.table_constraint_unique
+                                    ? "UNIQUE"
+                                    : "PRIMARY"
+                            } KEY constriant.`
+                        );
+                    }
+                    break;
+                }
+            }
+        }
+    }
+
+    static validateColumnConstraints(
+        database: DatabaseFile,
+        tableDefinition: TableDefinition,
+        insertRow: InsertRow,
+        column: TableColumnDefinition
+    ) {
+        const value = insertRow.row[column.name];
+        for (const constraint of column.constraints) {
+            const constraintErrorPrefix = constraint.constraint_name
+                ? `CONSTRAINT ${constraint.constraint_name.name.value}: `
+                : "";
+            switch (constraint.column_constraint_core.kind) {
+                case ASTKinds.column_constraint_check: {
+                    const result = QueryPlanner.evaluateExpression(
+                        database,
+                        insertRow.row,
+                        constraint.column_constraint_core.expression
+                    );
+                    if (!result.value) {
+                        throw new Error(
+                            `${constraintErrorPrefix}Column ${column.name} is violating CHECK (${result.name}) constriant.`
+                        );
+                    }
+                    break;
+                }
+                case ASTKinds.column_constriant_primary_key: {
+                    const conflictingRows = database.getRows(
+                        tableDefinition.tableName,
+                        (row) => row[column.name] === value
+                    );
+                    if (conflictingRows.length > 0) {
+                        throw new Error(
+                            `${constraintErrorPrefix}Column ${column.name} is violating PRIMARY KEY constriant.`
+                        );
+                    }
+                    break;
+                }
+                case ASTKinds.column_constraint_unique: {
+                    const conflictingRows = database.getRows(
+                        tableDefinition.tableName,
+                        (row) => row[column.name] === value
+                    );
+                    if (conflictingRows.length > 0) {
+                        throw new Error(
+                            `${constraintErrorPrefix}Column ${column.name} is violating UNIQUE constriant.`
+                        );
+                    }
+                    break;
+                }
+                case ASTKinds.column_constraint_not_null:
+                    if (_.isNil(value)) {
+                        throw new Error(
+                            `${constraintErrorPrefix}Column ${column.name} is NULL, violating NOT NULL constraint.`
+                        );
+                    }
+            }
+        }
+    }
+
+    static validateConstraints(
+        database: DatabaseFile,
+        tableDefinition: TableDefinition,
+        insertRow: InsertRow
+    ) {
+        for (const column of tableDefinition.columns) {
+            InsertManager.validateColumnConstraints(
+                database,
+                tableDefinition,
+                insertRow,
+                column
+            );
+        }
+
+        InsertManager.validateTableConstraints(
+            database,
+            tableDefinition,
+            insertRow
+        );
     }
 
     static constructRows(
