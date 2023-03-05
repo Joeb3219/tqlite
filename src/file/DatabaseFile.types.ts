@@ -47,17 +47,24 @@ export type BTreeHeaderCommon = {
     numberFragmentedFreeBytesInCellContent: number;
     pageNumber: number;
 };
-
 export type BTreeHeader =
     | ({
-          type: "index_leaf" | "table_leaf";
-      } & BTreeHeaderCommon)
+        type: "index_leaf";
+    } & BTreeHeaderCommon)
     | ({
-          type: "index_interior" | "table_interior";
-          rightmostPointer: number;
-      } & BTreeHeaderCommon);
+        type: "table_leaf";
+    } & BTreeHeaderCommon)
+    | ({
+        type: "index_interior";
+        rightmostPointer: number;
+    } & BTreeHeaderCommon)
+    | ({
+        type: "table_interior";
+        rightmostPointer: number;
+    } & BTreeHeaderCommon);
 
 export type BTreePageType = BTreeHeader["type"];
+export type BTreePageHeaderOfType<T extends BTreePageType> = Extract<BTreeHeader, { type: T }>;
 
 export type BTreeRecord =
     | {
@@ -116,6 +123,7 @@ export type BTreeRecord =
 export type BTreeTablePagePointer = {
     key: number;
     pageNumber: number;
+    pageOffset: number; // How many bytes into the page this record starts at
 };
 
 export type BTreeRow = {
@@ -124,6 +132,7 @@ export type BTreeRow = {
     payloadSize: number;
     storedSize: number;
     records: BTreeRecord[];
+    pageOffset: number; // How many bytes into the page this record starts at
     cells: any;
 };
 
@@ -133,6 +142,7 @@ export type BTreeIndexInteriorData = {
     payloadSize: number;
     storedSize: number;
     records: BTreeRecord[];
+    pageOffset: number; // How many bytes into the page this record starts at
     cells: any;
 };
 
@@ -141,6 +151,7 @@ export type BTreeIndexData = {
     storedSize: number;
     overflowPage: number | undefined;
     records: BTreeRecord[];
+    pageOffset: number; // How many bytes into the page this record starts at
     cells: any;
 };
 
@@ -148,21 +159,27 @@ export type BTreePage =
     | {
           type: "table_leaf";
           rows: BTreeRow[];
+          header: BTreePageHeaderOfType<"table_leaf">;
       }
     | {
           type: "table_interior";
           pointers: BTreeTablePagePointer[];
+          header: BTreePageHeaderOfType<"table_interior">;
       }
     | {
           type: "index_leaf";
           indices: BTreeIndexData[];
+          header: BTreePageHeaderOfType<"index_leaf">;
       }
     | {
           type: "index_interior";
           indices: BTreeIndexInteriorData[];
+          header: BTreePageHeaderOfType<"index_interior">;
       };
 
 export type BTreePageOfType<T extends BTreePage["type"]> = Extract<
     BTreePage,
     { type: T }
 >;
+
+export type BTreePageRecord = BTreeRow | BTreeTablePagePointer | BTreeIndexData | BTreeIndexInteriorData;

@@ -28,7 +28,9 @@ export class DatabaseFileBTreePageUtil {
             bytes,
             currentIndex
         );
+        console.log('reading row header size', { currentIndex, headerSize, headerSizeLength })
         currentIndex += headerSizeLength;
+
 
         const columnSerialTypes: number[] = [];
         while (currentIndex < headerSize) {
@@ -229,7 +231,6 @@ export class DatabaseFileBTreePageUtil {
         };
     }
 
-    // https://www.sqlite.org/src4/doc/trunk/www/varint.wiki
     // Will be in the range of 0...(2^64) - 1
     static readVarInt(
         bytes: Buffer,
@@ -273,6 +274,9 @@ export class DatabaseFileBTreePageUtil {
             startOffset,
             startOffset + pageHeader.numberCells * 2
         );
+        console.log('cell offsets', _.range(0, pageHeader.numberCells).map((idx) =>
+        cellPointerBytes.readUInt16BE(idx * 2)
+    ))
         return _.range(0, pageHeader.numberCells).map((idx) =>
             cellPointerBytes.readUInt16BE(idx * 2)
         );
@@ -346,6 +350,7 @@ export class DatabaseFileBTreePageUtil {
                 pageNumber,
                 overflowPage,
                 records,
+                pageOffset: offset,
                 cells: DatabaseFileBTreePageUtil.zipRecordsAndColumns(
                     records,
                     columns
@@ -363,8 +368,10 @@ export class DatabaseFileBTreePageUtil {
                     pageNumber: pageHeader.rightmostPointer,
                     overflowPage: undefined,
                     cells: {},
+                    pageOffset: 8
                 },
             ],
+            header: pageHeader,
             type: "index_interior",
         };
     }
@@ -430,6 +437,7 @@ export class DatabaseFileBTreePageUtil {
                 storedSize,
                 overflowPage,
                 records,
+                pageOffset: offset,
                 cells: DatabaseFileBTreePageUtil.zipRecordsAndColumns(
                     records,
                     columns
@@ -442,6 +450,7 @@ export class DatabaseFileBTreePageUtil {
         return {
             type: "index_leaf",
             indices,
+            header: pageHeader
         };
     }
 
@@ -486,6 +495,7 @@ export class DatabaseFileBTreePageUtil {
             let currentIndex = offset;
             const { value: payloadSize, length: payloadSizeLength } =
                 this.readVarInt(bytes, currentIndex);
+            console.log('reading varint payload size', { payloadSize, payloadSizeLength })
             currentIndex += payloadSizeLength;
 
             const { value: rowId, length: rowIdLength } = this.readVarInt(
@@ -534,6 +544,7 @@ export class DatabaseFileBTreePageUtil {
                 ? Buffer.from([...storedData, ...overflowPageData])
                 : storedData;
 
+                console.log('parsing records', { currentIndex })
             const records = this.parseRecord(data, dbHeader);
             return {
                 payloadSize,
@@ -541,6 +552,7 @@ export class DatabaseFileBTreePageUtil {
                 rowId,
                 overflowPage,
                 records,
+                pageOffset: offset,
                 cells: DatabaseFileBTreePageUtil.zipRecordsAndColumns(
                     records,
                     columns
@@ -548,7 +560,7 @@ export class DatabaseFileBTreePageUtil {
             };
         });
 
-        return { type: "table_leaf", rows };
+        return { type: "table_leaf", rows, header: pageHeader };
     }
 
     static zipRecordsAndColumns(
@@ -582,6 +594,7 @@ export class DatabaseFileBTreePageUtil {
             return {
                 pageNumber,
                 key: this.readVarInt(bytes, currentIndex).value,
+                pageOffset: offset
             };
         });
 
@@ -589,8 +602,9 @@ export class DatabaseFileBTreePageUtil {
             type: "table_interior",
             pointers: [
                 ...pointers,
-                { key: 0, pageNumber: pageHeader.rightmostPointer },
+                { key: 0, pageNumber: pageHeader.rightmostPointer, pageOffset: 8 },
             ],
+            header: pageHeader
         };
     }
 
