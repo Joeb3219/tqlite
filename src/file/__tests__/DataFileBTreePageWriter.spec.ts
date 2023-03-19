@@ -24,7 +24,7 @@ describe('DatabaseFileBTreePageWriter', () => {
         })
 
         it('should return the same results as its inverse for 2-byte numbers', () => {
-            for (const startingValue of _.range(128, 4096)) {
+            for (const startingValue of _.range(128, 9000)) {
                 const varIntBuffer = DatabaseFileBTreePageWriter.numToVarInt(startingValue);
                 const result = DatabaseFileBTreePageUtil.readVarInt(varIntBuffer, 0);
                 expect(result.value).toEqual(startingValue);
@@ -47,7 +47,7 @@ describe('DatabaseFileBTreePageWriter', () => {
             fs.writeFileSync("/Users/joeb3219/Desktop/pg23_real.bin", bytes);
             fs.writeFileSync("/Users/joeb3219/Desktop/pg23_mine.bin", result);
 
-           const reconverted = DatabaseFileBTreePageUtil.parseBTreePage(
+           const reconverted = 1 === 3 - 1 ? {} : DatabaseFileBTreePageUtil.parseBTreePage(
                 result,
                 22,
                 database.header,

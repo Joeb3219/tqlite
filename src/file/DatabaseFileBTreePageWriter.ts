@@ -39,9 +39,9 @@ export class DatabaseFileBTreePageWriter {
             case 'reserved': 
                 return 11;
             case 'blob': 
-                return (record.value.length + 12) * 2;
+                return (record.value.length * 2) + 12;
             case 'text': 
-                return (record.value.length + 13) * 2;
+                return (record.value.length * 2) + 13;
         }
     }
 
@@ -88,34 +88,27 @@ export class DatabaseFileBTreePageWriter {
     // Converts a number to a VarInt.
     // TODO: handle 9 byte values fully, as we currently will fail.
     static numToVarInt(num: number): Buffer {
-        const bytes: number[] = [];
-
         if (num === 0) {
             return Buffer.from([0]);
         }
 
-        if (num === 1) {
-            return Buffer.from([1]);
-        }
-        
-        if (num === 128) {
-            return Buffer.from([0b1000_0001, 0b0000_0000])
-        }
-
-        // The log_2 of a number will return the most significant bit.
-        // This intuitively makes sense, as if the bit higher than it was set, the number would be * 2 and thus log_2(num * 2) = 1 + log_2(num).
-        const mostSignificantBitIndex = Math.floor(Math.log2(num));
-        let currentBitIndex = 7 * Math.ceil((mostSignificantBitIndex ?? 1) / 7);
-        while (currentBitIndex > 0) {
-            const numBits = (bytes.length === 7) ? 8 : 7;
-            const mask = numBits === 8 ? 0b1111_1111 : 0b0111_1111;
-            const shiftDelta = numBits === 7 ? 7 : 6;
-            const byte = (num >> (currentBitIndex - shiftDelta)) & mask;
-
-            bytes.push(byte);
-            currentBitIndex -= numBits;
-        }
-        
+        // 0b1000_0001
+        // chunks into [0b0000_001, and 0b0000_001]
+        const byteOctets = [
+            // TODO: support > 32 bit values
+            // (num >> 56) & 0b1111_1111,
+            // (num >> 49) & 0b0111_1111,
+            // (num >> 42) & 0b0111_1111,
+            // (num >> 35) & 0b0111_1111,
+            (num >> 28) & 0b0111_1111,
+            (num >> 21) & 0b0111_1111,
+            (num >> 14) & 0b0111_1111,
+            (num >> 7) & 0b0111_1111,
+            (num >> 0) & 0b0111_1111,
+        ]
+        // We can trim anything to the left of the MSB.
+        const mostSignificantByteIndex = byteOctets.findIndex(byte => byte !== 0);
+        const bytes = byteOctets.slice(mostSignificantByteIndex);
 
         const buffer = Buffer.alloc(bytes.length);
         bytes.forEach((b, idx) => buffer.writeUInt8(
@@ -166,6 +159,7 @@ export class DatabaseFileBTreePageWriter {
     }
 
     static getSerialTypesBuffer(cell: BTreeRow) {
+        console.log('cell types', cell.records.map(r => `${r.type}, ${typeof r.value === 'string' ? r.value.length : 'na'}`));
         const serialTypeVarInts = cell.records.map(record => DatabaseFileBTreePageWriter.numToVarInt(DatabaseFileBTreePageWriter.convertBTreeRecordTypeToSerialNumber(record)));
 
         const buffer = Buffer.alloc(_.sumBy(serialTypeVarInts, s => s.length));
@@ -193,7 +187,7 @@ export class DatabaseFileBTreePageWriter {
         const contentAreaBuffer = Buffer.alloc(cell.payloadSize);
 
         const serialTypesBuffer = DatabaseFileBTreePageWriter.getSerialTypesBuffer(cell);
-        const serialTypesBufferLengthVarInt = DatabaseFileBTreePageWriter.numToVarInt(serialTypesBuffer.length);
+        const serialTypesBufferLengthVarInt = DatabaseFileBTreePageWriter.numToVarInt(serialTypesBuffer.length + 1);
 
         // Write the length of the header
         console.log(`writing row header length ${serialTypesBuffer.length} to ${currentOffset}`)
@@ -217,7 +211,7 @@ export class DatabaseFileBTreePageWriter {
 
         currentOffset += contentAreaFinalSize;
 
-        if (cell.overflowPage && 2 === 5 - 5) {
+        if (cell.overflowPage) {
             buffer.writeUInt32BE(cell.overflowPage, currentOffset);
         }
     }

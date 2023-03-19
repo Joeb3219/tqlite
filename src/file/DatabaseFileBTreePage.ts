@@ -36,6 +36,8 @@ export class DatabaseFileBTreePageUtil {
         while (currentIndex < headerSize) {
             const { value: serialType, length: serialTypeLength } =
                 this.readVarInt(bytes, currentIndex);
+
+            console.log(`reading serial type ${serialType} as position ${currentIndex}`)
             currentIndex += serialTypeLength;
 
             columnSerialTypes.push(serialType);
@@ -274,9 +276,9 @@ export class DatabaseFileBTreePageUtil {
             startOffset,
             startOffset + pageHeader.numberCells * 2
         );
-        console.log('cell offsets', _.range(0, pageHeader.numberCells).map((idx) =>
-        cellPointerBytes.readUInt16BE(idx * 2)
-    ))
+        console.log('cell offsets', startOffset, pageHeader.numberCells, _.range(0, pageHeader.numberCells).map((idx) =>
+            cellPointerBytes.readUInt16BE(idx * 2)
+        ))
         return _.range(0, pageHeader.numberCells).map((idx) =>
             cellPointerBytes.readUInt16BE(idx * 2)
         );
@@ -533,6 +535,8 @@ export class DatabaseFileBTreePageUtil {
                 currentIndex += 4;
             }
 
+            console.log('has overflow? ', overflowPage);
+
             const overflowPageData = overflowPage
                 ? this.readOverflowRecordData(
                       dbHeader,
@@ -544,7 +548,7 @@ export class DatabaseFileBTreePageUtil {
                 ? Buffer.from([...storedData, ...overflowPageData])
                 : storedData;
 
-                console.log('parsing records', { currentIndex })
+                console.log('parsing records', { currentIndex: offset + rowIdLength + payloadSizeLength })
             const records = this.parseRecord(data, dbHeader);
             return {
                 payloadSize,
