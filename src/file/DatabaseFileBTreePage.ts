@@ -609,7 +609,7 @@ export class DatabaseFileBTreePageUtil {
         const pointers = offsets.map<BTreeTablePagePointer>((offset) => {
             let currentIndex = offset;
             const pageNumber = bytes.readUInt32BE(currentIndex);
-            offset += 4;
+            currentIndex += 4;
             return {
                 pageNumber,
                 key: this.readVarInt(bytes, currentIndex).value,
@@ -624,7 +624,7 @@ export class DatabaseFileBTreePageUtil {
                 {
                     key: 0,
                     pageNumber: pageHeader.rightmostPointer,
-                    pageOffset: 8,
+                    pageOffset: -1,
                 },
             ],
             header: pageHeader,

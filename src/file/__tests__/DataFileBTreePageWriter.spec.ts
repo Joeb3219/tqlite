@@ -75,23 +75,23 @@ describe("DatabaseFileBTreePageWriter", () => {
                 "/Users/joeb3219/Desktop/other_sample.sqlite"
             );
             const database = new DatabaseFile(f);
-            const bytes = database.getBytesOnPage(database.header, 22);
-            const page = database.loadPage(23, []);
+            const bytes = database.getBytesOnPage(database.header, 18);
+            const page = database.loadPage(19, []);
             console.log(page);
             const writer = new DatabaseFileBTreePageWriter(database, page);
             const result = writer.getBytesBuffer();
-            fs.writeFileSync("/Users/joeb3219/Desktop/pg23_real.bin", bytes);
-            fs.writeFileSync("/Users/joeb3219/Desktop/pg23_mine.bin", result);
+            fs.writeFileSync("/Users/joeb3219/Desktop/pg19_real.bin", bytes);
+            fs.writeFileSync("/Users/joeb3219/Desktop/pg19_mine.bin", result);
 
             const reconverted = DatabaseFileBTreePageUtil.parseBTreePage(
                 result,
-                22,
+                18,
                 database.header,
                 (pageNumber) =>
                     database.getBytesOnPage(database.header, pageNumber - 1),
                 []
             );
-            expect(reconverted).toEqual(database.loadPage(23, []));
+            expect(reconverted).toEqual(database.loadPage(19, []));
         });
     });
 });

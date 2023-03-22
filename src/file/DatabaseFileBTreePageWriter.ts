@@ -229,6 +229,16 @@ export class DatabaseFileBTreePageWriter {
         return buffer;
     }
 
+    static writeTablePagePointer(buffer: Buffer, cell: BTreeTablePagePointer) {
+        let currentIndex: number = cell.pageOffset;
+
+        buffer.writeUInt32BE(cell.pageNumber, currentIndex);
+        currentIndex += 4;
+
+        const varIntBuffer = DatabaseFileBTreePageWriter.numToVarInt(cell.key);
+        varIntBuffer.copy(buffer, currentIndex);
+    }
+
     static writeTablePageLeafRecord(buffer: Buffer, cell: BTreeRow) {
         const sizeBuffer = DatabaseFileBTreePageWriter.numToVarInt(
             cell.payloadSize
@@ -317,13 +327,35 @@ export class DatabaseFileBTreePageWriter {
             case "index_leaf":
                 throw new Error();
             case "table_interior":
-                throw new Error();
-            case "table_leaf":
                 console.log("header", this.page.header);
                 console.log(
                     "header offsets",
-                    this.page.rows.map((r) => r.pageOffset)
+                    this.page.pointers.map((r) => r.pageOffset)
                 );
+                const lastPointer = _.last(this.page.pointers);
+                DatabaseFileBTreePageWriter.writeCellPointers(
+                    buffer,
+                    // We do not write the last pointer since it will be stored at the 8th byte
+                    this.page.pointers.slice(0, -1).map((r) => r.pageOffset),
+                    DatabaseFileBTreePageWriter.getPageHeaderSize(this.page)
+                );
+
+                // Write the rightmost pointer to the 8th byte
+                if (lastPointer) {
+                    buffer.writeUint32BE(lastPointer.pageNumber, 8);
+                }
+
+                _.sortBy(
+                    this.page.pointers.slice(0, -1),
+                    (pointer) => pointer.pageOffset
+                ).forEach((pointer) => {
+                    DatabaseFileBTreePageWriter.writeTablePagePointer(
+                        buffer,
+                        pointer
+                    );
+                });
+                break;
+            case "table_leaf":
                 DatabaseFileBTreePageWriter.writeCellPointers(
                     buffer,
                     this.page.rows.map((r) => r.pageOffset),
@@ -337,6 +369,7 @@ export class DatabaseFileBTreePageWriter {
                         );
                     }
                 );
+                break;
         }
 
         return buffer;
