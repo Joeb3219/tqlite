@@ -1,6 +1,7 @@
 import _ from "lodash";
 import { DatabaseFile } from "./DatabaseFile";
 import {
+    BTreeIndexInteriorData,
     BTreePage,
     BTreePageOfType,
     BTreeRecord,
@@ -199,17 +200,17 @@ export class DatabaseFileBTreePageWriter {
         }
     }
 
-    static getSerialTypesBuffer(cell: BTreeRow) {
+    static getSerialTypesBuffer(records: BTreeRecord[]) {
         console.log(
             "cell types",
-            cell.records.map(
+            records.map(
                 (r) =>
                     `${r.type}, ${
                         typeof r.value === "string" ? r.value.length : "na"
                     }`
             )
         );
-        const serialTypeVarInts = cell.records.map((record) =>
+        const serialTypeVarInts = records.map((record) =>
             DatabaseFileBTreePageWriter.numToVarInt(
                 DatabaseFileBTreePageWriter.convertBTreeRecordTypeToSerialNumber(
                     record
@@ -246,35 +247,84 @@ export class DatabaseFileBTreePageWriter {
         const rowIdBuffer = DatabaseFileBTreePageWriter.numToVarInt(cell.rowId);
         let currentOffset = cell.pageOffset;
 
-        console.log(
-            `writing size ptr ${cell.payloadSize} to ${currentOffset} ${sizeBuffer.length}`
-        );
         sizeBuffer.copy(buffer, currentOffset);
         currentOffset += sizeBuffer.length;
-        console.log(`writing rowId ${cell.rowId} to ${currentOffset}`);
+
         rowIdBuffer.copy(buffer, currentOffset);
         currentOffset += rowIdBuffer.length;
 
         const contentAreaBuffer = Buffer.alloc(cell.payloadSize);
 
         const serialTypesBuffer =
-            DatabaseFileBTreePageWriter.getSerialTypesBuffer(cell);
+            DatabaseFileBTreePageWriter.getSerialTypesBuffer(cell.records);
         const serialTypesBufferLengthVarInt =
             DatabaseFileBTreePageWriter.numToVarInt(
                 serialTypesBuffer.length + 1
             );
 
         // Write the length of the header
-        console.log(
-            `writing row header length ${serialTypesBuffer.length} to ${currentOffset}`
-        );
         serialTypesBufferLengthVarInt.copy(buffer, currentOffset);
         currentOffset += serialTypesBufferLengthVarInt.length;
 
         // Write the header
-        console.log(
-            `writing row header ${serialTypesBuffer} to ${currentOffset}`
+        serialTypesBuffer.copy(buffer, currentOffset);
+        currentOffset += serialTypesBuffer.length;
+
+        // Write the body
+        let contentAreaCurrentIndex = 0;
+        for (const record of cell.records) {
+            contentAreaCurrentIndex +=
+                DatabaseFileBTreePageWriter.writeRecordValue(
+                    contentAreaBuffer,
+                    record,
+                    contentAreaCurrentIndex
+                );
+        }
+
+        const contentAreaFinalSize =
+            cell.storedSize -
+            serialTypesBufferLengthVarInt.length -
+            serialTypesBuffer.length;
+        contentAreaBuffer.copy(buffer, currentOffset, 0, contentAreaFinalSize);
+
+        currentOffset += contentAreaFinalSize;
+
+        if (cell.overflowPage) {
+            buffer.writeUInt32BE(cell.overflowPage, currentOffset);
+        }
+    }
+
+    static writeIndexInteriorRecord(
+        buffer: Buffer,
+        cell: BTreeIndexInteriorData
+    ) {
+        let currentOffset: number = cell.pageOffset;
+
+        // Page number
+        buffer.writeUInt32BE(cell.pageNumber, currentOffset);
+        currentOffset += 4;
+
+        // Payload size
+        const sizeBuffer = DatabaseFileBTreePageWriter.numToVarInt(
+            cell.payloadSize
         );
+        sizeBuffer.copy(buffer, currentOffset);
+        currentOffset += sizeBuffer.length;
+
+        const contentAreaBuffer = Buffer.alloc(cell.payloadSize);
+
+        const serialTypesBuffer =
+            DatabaseFileBTreePageWriter.getSerialTypesBuffer(cell.records);
+        const serialTypesBufferLengthVarInt =
+            DatabaseFileBTreePageWriter.numToVarInt(
+                serialTypesBuffer.length + 1
+            );
+
+        // Write the length of the header
+        serialTypesBufferLengthVarInt.copy(buffer, currentOffset);
+        currentOffset += serialTypesBufferLengthVarInt.length;
+
+        // Write the header
         serialTypesBuffer.copy(buffer, currentOffset);
         currentOffset += serialTypesBuffer.length;
 
@@ -299,10 +349,6 @@ export class DatabaseFileBTreePageWriter {
         contentAreaBuffer.copy(buffer, currentOffset, 0, contentAreaFinalSize);
 
         currentOffset += contentAreaFinalSize;
-
-        if (cell.overflowPage) {
-            buffer.writeUInt32BE(cell.overflowPage, currentOffset);
-        }
     }
 
     static writeTablePagePointerRecord(
@@ -322,16 +368,33 @@ export class DatabaseFileBTreePageWriter {
         DatabaseFileBTreePageWriter.writeHeaderBytes(buffer, this.page);
 
         switch (this.page.type) {
-            case "index_interior":
-                throw new Error();
-            case "index_leaf":
-                throw new Error();
-            case "table_interior":
-                console.log("header", this.page.header);
-                console.log(
-                    "header offsets",
-                    this.page.pointers.map((r) => r.pageOffset)
+            case "index_interior": {
+                const lastPointer = _.last(this.page.indices);
+                DatabaseFileBTreePageWriter.writeCellPointers(
+                    buffer,
+                    // We do not write the last pointer since it will be stored at the 8th byte
+                    this.page.indices.slice(0, -1).map((r) => r.pageOffset),
+                    DatabaseFileBTreePageWriter.getPageHeaderSize(this.page)
                 );
+                // Write the rightmost pointer to the 8th byte
+                if (lastPointer) {
+                    buffer.writeUint32BE(lastPointer.pageNumber, 8);
+                }
+                _.sortBy(
+                    this.page.indices.slice(0, -1),
+                    (pointer) => pointer.pageOffset
+                ).forEach((pointer) => {
+                    DatabaseFileBTreePageWriter.writeIndexInteriorRecord(
+                        buffer,
+                        pointer
+                    );
+                });
+                break;
+            }
+            case "index_leaf": {
+                throw new Error();
+            }
+            case "table_interior": {
                 const lastPointer = _.last(this.page.pointers);
                 DatabaseFileBTreePageWriter.writeCellPointers(
                     buffer,
@@ -355,7 +418,8 @@ export class DatabaseFileBTreePageWriter {
                     );
                 });
                 break;
-            case "table_leaf":
+            }
+            case "table_leaf": {
                 DatabaseFileBTreePageWriter.writeCellPointers(
                     buffer,
                     this.page.rows.map((r) => r.pageOffset),
@@ -370,6 +434,7 @@ export class DatabaseFileBTreePageWriter {
                     }
                 );
                 break;
+            }
         }
 
         return buffer;

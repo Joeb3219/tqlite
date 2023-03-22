@@ -93,5 +93,29 @@ describe("DatabaseFileBTreePageWriter", () => {
             );
             expect(reconverted).toEqual(database.loadPage(19, []));
         });
+
+        it("should return the same data when reading a re-written index interior page", () => {
+            const f = fs.readFileSync(
+                "/Users/joeb3219/Desktop/other_sample.sqlite"
+            );
+            const database = new DatabaseFile(f);
+            const bytes = database.getBytesOnPage(database.header, 25);
+            const page = database.loadPage(26, []);
+            console.log("page", page);
+            const writer = new DatabaseFileBTreePageWriter(database, page);
+            const result = writer.getBytesBuffer();
+            fs.writeFileSync("/Users/joeb3219/Desktop/pg26_real.bin", bytes);
+            fs.writeFileSync("/Users/joeb3219/Desktop/pg26_mine.bin", result);
+
+            const reconverted = DatabaseFileBTreePageUtil.parseBTreePage(
+                result,
+                25,
+                database.header,
+                (pageNumber) =>
+                    database.getBytesOnPage(database.header, pageNumber - 1),
+                []
+            );
+            expect(reconverted).toEqual(database.loadPage(26, []));
+        });
     });
 });
