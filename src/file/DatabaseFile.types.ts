@@ -49,22 +49,25 @@ export type BTreeHeaderCommon = {
 };
 export type BTreeHeader =
     | ({
-        type: "index_leaf";
-    } & BTreeHeaderCommon)
+          type: "index_leaf";
+      } & BTreeHeaderCommon)
     | ({
-        type: "table_leaf";
-    } & BTreeHeaderCommon)
+          type: "table_leaf";
+      } & BTreeHeaderCommon)
     | ({
-        type: "index_interior";
-        rightmostPointer: number;
-    } & BTreeHeaderCommon)
+          type: "index_interior";
+          rightmostPointer: number;
+      } & BTreeHeaderCommon)
     | ({
-        type: "table_interior";
-        rightmostPointer: number;
-    } & BTreeHeaderCommon);
+          type: "table_interior";
+          rightmostPointer: number;
+      } & BTreeHeaderCommon);
 
 export type BTreePageType = BTreeHeader["type"];
-export type BTreePageHeaderOfType<T extends BTreePageType> = Extract<BTreeHeader, { type: T }>;
+export type BTreePageHeaderOfType<T extends BTreePageType> = Extract<
+    BTreeHeader,
+    { type: T }
+>;
 
 export type BTreeRecord =
     | {
@@ -182,4 +185,8 @@ export type BTreePageOfType<T extends BTreePage["type"]> = Extract<
     { type: T }
 >;
 
-export type BTreePageRecord = BTreeRow | BTreeTablePagePointer | BTreeIndexData | BTreeIndexInteriorData;
+export type BTreePageRecord =
+    | BTreeRow
+    | BTreeTablePagePointer
+    | BTreeIndexData
+    | BTreeIndexInteriorData;

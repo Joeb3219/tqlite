@@ -238,7 +238,7 @@ const PageViewer: React.VFC<{ database: DatabaseFile }> = ({ database }) => {
     const pageKeys = _.range(0, database.header.databaseFileSizeInPages);
 
     return (
-        <Grid container direction={"column"} style={{ overflowY: 'scroll' }}>
+        <Grid container direction={"column"} style={{ overflowY: "scroll" }}>
             <Grid item>
                 <Select
                     onChange={(event) => {

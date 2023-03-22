@@ -28,16 +28,21 @@ export class DatabaseFileBTreePageUtil {
             bytes,
             currentIndex
         );
-        console.log('reading row header size', { currentIndex, headerSize, headerSizeLength })
+        console.log("reading row header size", {
+            currentIndex,
+            headerSize,
+            headerSizeLength,
+        });
         currentIndex += headerSizeLength;
-
 
         const columnSerialTypes: number[] = [];
         while (currentIndex < headerSize) {
             const { value: serialType, length: serialTypeLength } =
                 this.readVarInt(bytes, currentIndex);
 
-            console.log(`reading serial type ${serialType} as position ${currentIndex}`)
+            console.log(
+                `reading serial type ${serialType} as position ${currentIndex}`
+            );
             currentIndex += serialTypeLength;
 
             columnSerialTypes.push(serialType);
@@ -276,9 +281,14 @@ export class DatabaseFileBTreePageUtil {
             startOffset,
             startOffset + pageHeader.numberCells * 2
         );
-        console.log('cell offsets', startOffset, pageHeader.numberCells, _.range(0, pageHeader.numberCells).map((idx) =>
-            cellPointerBytes.readUInt16BE(idx * 2)
-        ))
+        console.log(
+            "cell offsets",
+            startOffset,
+            pageHeader.numberCells,
+            _.range(0, pageHeader.numberCells).map((idx) =>
+                cellPointerBytes.readUInt16BE(idx * 2)
+            )
+        );
         return _.range(0, pageHeader.numberCells).map((idx) =>
             cellPointerBytes.readUInt16BE(idx * 2)
         );
@@ -370,7 +380,7 @@ export class DatabaseFileBTreePageUtil {
                     pageNumber: pageHeader.rightmostPointer,
                     overflowPage: undefined,
                     cells: {},
-                    pageOffset: 8
+                    pageOffset: 8,
                 },
             ],
             header: pageHeader,
@@ -452,7 +462,7 @@ export class DatabaseFileBTreePageUtil {
         return {
             type: "index_leaf",
             indices,
-            header: pageHeader
+            header: pageHeader,
         };
     }
 
@@ -497,7 +507,10 @@ export class DatabaseFileBTreePageUtil {
             let currentIndex = offset;
             const { value: payloadSize, length: payloadSizeLength } =
                 this.readVarInt(bytes, currentIndex);
-            console.log('reading varint payload size', { payloadSize, payloadSizeLength })
+            console.log("reading varint payload size", {
+                payloadSize,
+                payloadSizeLength,
+            });
             currentIndex += payloadSizeLength;
 
             const { value: rowId, length: rowIdLength } = this.readVarInt(
@@ -535,7 +548,7 @@ export class DatabaseFileBTreePageUtil {
                 currentIndex += 4;
             }
 
-            console.log('has overflow? ', overflowPage);
+            console.log("has overflow? ", overflowPage);
 
             const overflowPageData = overflowPage
                 ? this.readOverflowRecordData(
@@ -548,7 +561,9 @@ export class DatabaseFileBTreePageUtil {
                 ? Buffer.from([...storedData, ...overflowPageData])
                 : storedData;
 
-                console.log('parsing records', { currentIndex: offset + rowIdLength + payloadSizeLength })
+            console.log("parsing records", {
+                currentIndex: offset + rowIdLength + payloadSizeLength,
+            });
             const records = this.parseRecord(data, dbHeader);
             return {
                 payloadSize,
@@ -598,7 +613,7 @@ export class DatabaseFileBTreePageUtil {
             return {
                 pageNumber,
                 key: this.readVarInt(bytes, currentIndex).value,
-                pageOffset: offset
+                pageOffset: offset,
             };
         });
 
@@ -606,9 +621,13 @@ export class DatabaseFileBTreePageUtil {
             type: "table_interior",
             pointers: [
                 ...pointers,
-                { key: 0, pageNumber: pageHeader.rightmostPointer, pageOffset: 8 },
+                {
+                    key: 0,
+                    pageNumber: pageHeader.rightmostPointer,
+                    pageOffset: 8,
+                },
             ],
-            header: pageHeader
+            header: pageHeader,
         };
     }
 
