@@ -129,5 +129,26 @@ describe("DatabaseFileBTreePageWriter", () => {
             );
             expect(reconverted).toEqual(database.loadPage(20, []));
         });
+
+        it("should return the same data when reading the first page", () => {
+            const f = fs.readFileSync(
+                "/Users/joeb3219/Desktop/other_sample.sqlite"
+            );
+            const database = new DatabaseFile(f);
+            const page = database.loadPage(1, []);
+
+            const writer = new DatabaseFileBTreePageWriter(database, page);
+            const result = writer.getBytesBuffer();
+
+            const reconverted = DatabaseFileBTreePageUtil.parseBTreePage(
+                result,
+                0,
+                database.header,
+                (pageNumber) =>
+                    database.getBytesOnPage(database.header, pageNumber - 1),
+                []
+            );
+            expect(reconverted).toEqual(database.loadPage(1, []));
+        });
     });
 });

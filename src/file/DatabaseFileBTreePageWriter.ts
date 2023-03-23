@@ -9,6 +9,7 @@ import {
     BTreeRow,
     BTreeTablePagePointer,
 } from "./DatabaseFile.types";
+import { DatabaseFileHeaderUtil } from "./DatabaseFileHeader";
 
 // Maps the page type to the value stored at byte 0x00 in the header.
 const BTreePageTypeToHeaderTypeMap: { [T in BTreePage["type"]]: number } = {
@@ -62,18 +63,40 @@ export class DatabaseFileBTreePageWriter {
     }
 
     static getPageHeaderSize(page: BTreePage): number {
-        return DatabaseFileBTreePageWriter.isInteriorPage(page) ? 12 : 8;
+        const pageHeaderOffset = DatabaseFileBTreePageWriter.isInteriorPage(
+            page
+        )
+            ? 12
+            : 8;
+        return page.header.pageNumber === 0
+            ? pageHeaderOffset + 100
+            : pageHeaderOffset;
     }
 
-    static writeHeaderBytes(buffer: Buffer, page: BTreePage) {
+    writeHeaderBytes(buffer: Buffer, page: BTreePage) {
+        const isFirstPage = page.header.pageNumber === 0;
+        const firstPageOffset = isFirstPage ? 100 : 0;
+
+        // If needed, writes the database header
+        // The database header is only written if there's
+        if (page.header.pageNumber === 0) {
+            DatabaseFileHeaderUtil.writeHeader(buffer, this.database.header);
+        }
+
         // Write the page type
-        buffer.writeUint8(BTreePageTypeToHeaderTypeMap[page.type], 0x00);
+        buffer.writeUint8(
+            BTreePageTypeToHeaderTypeMap[page.type],
+            firstPageOffset + 0x00
+        );
 
         // Write the first freeblock
-        buffer.writeUInt16BE(page.header.firstFreeblockIndex, 0x01);
+        buffer.writeUInt16BE(
+            page.header.firstFreeblockIndex,
+            firstPageOffset + 0x01
+        );
 
         // Write the number of cells
-        buffer.writeUInt16BE(page.header.numberCells, 0x03);
+        buffer.writeUInt16BE(page.header.numberCells, firstPageOffset + 0x03);
 
         // Write the cell contents area
         // If the index is 65536, it will be beyond what can be stored in a 2-byte value, hence we use 0.
@@ -81,18 +104,21 @@ export class DatabaseFileBTreePageWriter {
             page.header.cellContentStartIndex === 65536
                 ? 0
                 : page.header.cellContentStartIndex,
-            0x05
+            firstPageOffset + 0x05
         );
 
         // Write the number of fragmented bytes
         buffer.writeUInt16BE(
             page.header.numberFragmentedFreeBytesInCellContent,
-            0x07
+            firstPageOffset + 0x07
         );
 
         // If an interior page, we write the rightmost pointer.
         if (DatabaseFileBTreePageWriter.isInteriorPage(page)) {
-            buffer.writeUInt32BE(page.header.rightmostPointer, 0x08);
+            buffer.writeUInt32BE(
+                page.header.rightmostPointer,
+                firstPageOffset + 0x08
+            );
         }
 
         return buffer;
@@ -399,7 +425,7 @@ export class DatabaseFileBTreePageWriter {
 
     getBytesBuffer(): Buffer {
         const buffer = Buffer.alloc(this.database.header.pageSizeBytes);
-        DatabaseFileBTreePageWriter.writeHeaderBytes(buffer, this.page);
+        this.writeHeaderBytes(buffer, this.page);
 
         switch (this.page.type) {
             case "index_interior": {

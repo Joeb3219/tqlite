@@ -34,6 +34,19 @@ export class DatabaseFileHeaderUtil {
         return value;
     }
 
+    static writePageSizeBytes(buffer: Buffer, header: DatabaseHeader) {
+        if (header.pageSizeBytes < 512 || header.pageSizeBytes > 65536) {
+            throw new Error(
+                `Page size must be between 512 and 65536, but received ${header.pageSizeBytes}`
+            );
+        }
+
+        buffer.writeInt16BE(
+            header.pageSizeBytes === 65536 ? 1 : header.pageSizeBytes,
+            16
+        );
+    }
+
     static readFileFormatVersion(
         file: File,
         variant: "read" | "write"
@@ -50,6 +63,21 @@ export class DatabaseFileHeaderUtil {
 
         throw new Error(
             `File format version must be either 1 or 2, but received ${value}`
+        );
+    }
+
+    static writeFileFormatVersion(
+        buffer: Buffer,
+        header: DatabaseHeader,
+        variant: "read" | "write"
+    ) {
+        const value =
+            variant === "read"
+                ? header.fileFormatReadVersion
+                : header.fileFormatWriteVersion;
+        buffer.writeInt8(
+            value === "legacy" ? 1 : 2,
+            variant === "write" ? 18 : 19
         );
     }
 
@@ -78,6 +106,18 @@ export class DatabaseFileHeaderUtil {
         return value;
     }
 
+    static writeEmbeddedPayloadFraction(
+        buffer: Buffer,
+        header: DatabaseHeader,
+        variant: "maximum" | "minimum"
+    ) {
+        const value =
+            variant === "minimum"
+                ? header.minimumEmbeddedPayloadFraction
+                : header.maximumEmbeddedPayloadFraction;
+        buffer.writeInt8(value, variant === "minimum" ? 22 : 21);
+    }
+
     static readLeafPayloadFraction(file: File): 32 {
         const value = file.readInt8(23);
 
@@ -102,6 +142,10 @@ export class DatabaseFileHeaderUtil {
         return value;
     }
 
+    static writeSchemaFormatNumber(buffer: Buffer, header: DatabaseHeader) {
+        buffer.writeInt32BE(header.schemaFormatNumber, 44);
+    }
+
     static readTextEncoding(file: File): TextEncoding {
         const value = file.readInt32(56);
 
@@ -122,11 +166,63 @@ export class DatabaseFileHeaderUtil {
         );
     }
 
+    static writeTextEncoding(buffer: Buffer, header: DatabaseHeader) {
+        const value =
+            header.textEncoding === "utf8"
+                ? 1
+                : header.textEncoding === "utf16le"
+                ? 2
+                : 3;
+        buffer.writeInt32BE(value, 56);
+    }
+
     static readIncrementalVacuumMode(file: File): boolean {
         const value = file.readInt32(64);
 
         // Non-zero means true, whereas 0 means false.
         return value !== 0;
+    }
+
+    static writeIncrementalVacuumMode(buffer: Buffer, header: DatabaseHeader) {
+        buffer.writeInt32BE(header.incrementalVacuumMode ? 1 : 0, 64);
+    }
+
+    static writeHeaderString(
+        buffer: Buffer,
+        str: string,
+        startPosition: number
+    ) {
+        const strBuffer = Buffer.alloc(str.length);
+        for (let i = 0; i < str.length; i++) {
+            strBuffer.writeUint8(str.charCodeAt(i), i);
+        }
+
+        strBuffer.copy(buffer, startPosition);
+    }
+
+    static writeHeader(buffer: Buffer, header: DatabaseHeader) {
+        this.writeHeaderString(buffer, header.headerString, 0);
+        this.writePageSizeBytes(buffer, header);
+        this.writeFileFormatVersion(buffer, header, "write");
+        this.writeFileFormatVersion(buffer, header, "read");
+        buffer.writeInt8(header.unusedReservePageSpace, 20);
+        this.writeEmbeddedPayloadFraction(buffer, header, "maximum");
+        this.writeEmbeddedPayloadFraction(buffer, header, "minimum");
+        buffer.writeInt8(header.leafPayloadFraction, 23);
+        buffer.writeInt32BE(header.fileChangeCounter, 24);
+        buffer.writeInt32BE(header.databaseFileSizeInPages, 28);
+        buffer.writeInt32BE(header.firstFreelistTrunkPagePageNumber, 32);
+        buffer.writeInt32BE(header.numberFreelistPages, 36);
+        buffer.writeInt32BE(header.schemaCookie, 40);
+        this.writeSchemaFormatNumber(buffer, header);
+        buffer.writeInt32BE(header.defaultPageCacheSize, 48);
+        buffer.writeInt32BE(header.largeRootBTreePagePageNumber, 52);
+        this.writeTextEncoding(buffer, header);
+        buffer.writeInt32BE(header.userVersion, 60);
+        this.writeIncrementalVacuumMode(buffer, header);
+        buffer.writeInt32BE(header.applicationId, 68);
+        buffer.writeInt32BE(header.versionValidForNumber, 92);
+        buffer.writeInt32BE(header.sqliteVersionNumber, 96);
     }
 
     static parseHeader(file: File): DatabaseHeader {
