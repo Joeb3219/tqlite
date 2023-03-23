@@ -19,7 +19,19 @@ const BTreePageTypeToHeaderTypeMap: { [T in BTreePage["type"]]: number } = {
     table_leaf: 0x0d,
 };
 
+type OverflowPage = {
+    pageNumber: number;
+    page: Buffer;
+};
+
+type WriterIntermediateResult = {
+    page: Buffer;
+    overflowPages: OverflowPage[];
+};
+
 export class DatabaseFileBTreePageWriter {
+    overflowPages: OverflowPage[] = [];
+
     constructor(
         private readonly database: DatabaseFile,
         private readonly page: BTreePage
@@ -54,6 +66,59 @@ export class DatabaseFileBTreePageWriter {
             case "text":
                 return record.value.length * 2 + 13;
         }
+    }
+
+    // Assumes overflownBuffer is the portion of the Buffer which is too big for the page it was written to.
+    writeOverflowPages(
+        overflownBuffer: Buffer,
+        cell: BTreeRow | BTreeIndexInteriorData | BTreeIndexData
+    ): OverflowPage[] {
+        const { overflowPage, otherOverflowPages } = cell;
+
+        // Shouldn't ever happen, but we were passed a cell that doesn't actually describe an overflow
+        if (!overflowPage) {
+            return [];
+        }
+
+        const overflowPageNumbers: number[] = [
+            overflowPage,
+            ...otherOverflowPages,
+        ];
+
+        // Each overflow page is 4 bytes for the next page number, and then N - 4 bytes of overflow.
+        // We chunk it those sizes, and then can merge with the overflow numbers.
+        // The number of overflow pages should be the same as the number of chunks.
+        const chunks = _.chunk(
+            overflownBuffer,
+            this.database.header.pageSizeBytes - 4
+        ).slice(0, -1);
+
+        if (chunks.length !== overflowPageNumbers.length) {
+            console.log(chunks, overflowPageNumbers);
+            console.log(
+                overflownBuffer.length,
+                this.database.header.pageSizeBytes
+            );
+            throw new Error(
+                `Unequal number of page numbers (${overflowPageNumbers.length}) and overflow pages (${chunks.length})`
+            );
+        }
+
+        return chunks.map<OverflowPage>((chunk, idx) => {
+            const pageNumber = overflowPageNumbers[idx];
+            const nextPageNumber = overflowPageNumbers[idx + 1] ?? 0;
+
+            const page = Buffer.alloc(this.database.header.pageSizeBytes);
+            const chunkBuffer = Buffer.from(chunk);
+
+            page.writeInt32BE(nextPageNumber, 0x00);
+            chunkBuffer.copy(page, 0x04);
+
+            return {
+                pageNumber,
+                page,
+            };
+        });
     }
 
     static isInteriorPage(
@@ -253,7 +318,7 @@ export class DatabaseFileBTreePageWriter {
         varIntBuffer.copy(buffer, currentIndex);
     }
 
-    static writeIndexLeafRecord(buffer: Buffer, cell: BTreeIndexData) {
+    writeIndexLeafRecord(buffer: Buffer, cell: BTreeIndexData): OverflowPage[] {
         let currentOffset: number = cell.pageOffset;
         const sizeBuffer = DatabaseFileBTreePageWriter.numToVarInt(
             cell.payloadSize
@@ -301,9 +366,16 @@ export class DatabaseFileBTreePageWriter {
         if (cell.overflowPage) {
             buffer.writeUInt32BE(cell.overflowPage, currentOffset);
         }
+
+        return cell.overflowPage
+            ? this.writeOverflowPages(
+                  contentAreaBuffer.subarray(contentAreaFinalSize),
+                  cell
+              )
+            : [];
     }
 
-    static writeTablePageLeafRecord(buffer: Buffer, cell: BTreeRow) {
+    writeTablePageLeafRecord(buffer: Buffer, cell: BTreeRow): OverflowPage[] {
         const sizeBuffer = DatabaseFileBTreePageWriter.numToVarInt(
             cell.payloadSize
         );
@@ -355,12 +427,19 @@ export class DatabaseFileBTreePageWriter {
         if (cell.overflowPage) {
             buffer.writeUInt32BE(cell.overflowPage, currentOffset);
         }
+
+        return cell.overflowPage
+            ? this.writeOverflowPages(
+                  contentAreaBuffer.subarray(contentAreaFinalSize),
+                  cell
+              )
+            : [];
     }
 
-    static writeIndexInteriorRecord(
+    writeIndexInteriorRecord(
         buffer: Buffer,
         cell: BTreeIndexInteriorData
-    ) {
+    ): OverflowPage[] {
         let currentOffset: number = cell.pageOffset;
 
         // Page number
@@ -409,6 +488,17 @@ export class DatabaseFileBTreePageWriter {
         contentAreaBuffer.copy(buffer, currentOffset, 0, contentAreaFinalSize);
 
         currentOffset += contentAreaFinalSize;
+
+        if (cell.overflowPage) {
+            buffer.writeUInt32BE(cell.overflowPage, currentOffset);
+        }
+
+        return cell.overflowPage
+            ? this.writeOverflowPages(
+                  contentAreaBuffer.subarray(contentAreaFinalSize),
+                  cell
+              )
+            : [];
     }
 
     static writeTablePagePointerRecord(
@@ -423,7 +513,8 @@ export class DatabaseFileBTreePageWriter {
         keyBuffer.copy(buffer, startOffset + 4);
     }
 
-    getBytesBuffer(): Buffer {
+    getBytesBuffer(): WriterIntermediateResult {
+        this.overflowPages = [];
         const buffer = Buffer.alloc(this.database.header.pageSizeBytes);
         this.writeHeaderBytes(buffer, this.page);
 
@@ -440,16 +531,18 @@ export class DatabaseFileBTreePageWriter {
                 if (lastPointer) {
                     buffer.writeUint32BE(lastPointer.pageNumber, 8);
                 }
-                _.sortBy(
+
+                const overflowPages = _.sortBy(
                     this.page.indices.slice(0, -1),
                     (pointer) => pointer.pageOffset
-                ).forEach((pointer) => {
-                    DatabaseFileBTreePageWriter.writeIndexInteriorRecord(
-                        buffer,
-                        pointer
-                    );
-                });
-                break;
+                ).flatMap((pointer) =>
+                    this.writeIndexInteriorRecord(buffer, pointer)
+                );
+
+                return {
+                    page: buffer,
+                    overflowPages,
+                };
             }
             case "index_leaf": {
                 DatabaseFileBTreePageWriter.writeCellPointers(
@@ -457,15 +550,15 @@ export class DatabaseFileBTreePageWriter {
                     this.page.indices.map((r) => r.pageOffset),
                     DatabaseFileBTreePageWriter.getPageHeaderSize(this.page)
                 );
-                _.sortBy(this.page.indices, (row) => row.pageOffset).forEach(
-                    (row) => {
-                        DatabaseFileBTreePageWriter.writeIndexLeafRecord(
-                            buffer,
-                            row
-                        );
-                    }
-                );
-                break;
+                const overflowPages = _.sortBy(
+                    this.page.indices,
+                    (row) => row.pageOffset
+                ).flatMap((row) => this.writeIndexLeafRecord(buffer, row));
+
+                return {
+                    page: buffer,
+                    overflowPages,
+                };
             }
             case "table_interior": {
                 const lastPointer = _.last(this.page.pointers);
@@ -490,7 +583,11 @@ export class DatabaseFileBTreePageWriter {
                         pointer
                     );
                 });
-                break;
+
+                return {
+                    page: buffer,
+                    overflowPages: [],
+                };
             }
             case "table_leaf": {
                 DatabaseFileBTreePageWriter.writeCellPointers(
@@ -498,18 +595,16 @@ export class DatabaseFileBTreePageWriter {
                     this.page.rows.map((r) => r.pageOffset),
                     DatabaseFileBTreePageWriter.getPageHeaderSize(this.page)
                 );
-                _.sortBy(this.page.rows, (row) => row.pageOffset).forEach(
-                    (row) => {
-                        DatabaseFileBTreePageWriter.writeTablePageLeafRecord(
-                            buffer,
-                            row
-                        );
-                    }
-                );
-                break;
+                const overflowPages = _.sortBy(
+                    this.page.rows,
+                    (row) => row.pageOffset
+                ).flatMap((row) => this.writeTablePageLeafRecord(buffer, row));
+
+                return {
+                    page: buffer,
+                    overflowPages,
+                };
             }
         }
-
-        return buffer;
     }
 }

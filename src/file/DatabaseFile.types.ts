@@ -132,6 +132,7 @@ export type BTreeTablePagePointer = {
 export type BTreeRow = {
     rowId: number;
     overflowPage: number | undefined;
+    otherOverflowPages: number[];
     payloadSize: number;
     storedSize: number;
     records: BTreeRecord[];
@@ -142,6 +143,7 @@ export type BTreeRow = {
 export type BTreeIndexInteriorData = {
     pageNumber: number;
     overflowPage: number | undefined;
+    otherOverflowPages: number[];
     payloadSize: number;
     storedSize: number;
     records: BTreeRecord[];
@@ -153,6 +155,7 @@ export type BTreeIndexData = {
     payloadSize: number;
     storedSize: number;
     overflowPage: number | undefined;
+    otherOverflowPages: number[];
     records: BTreeRecord[];
     pageOffset: number; // How many bytes into the page this record starts at
     cells: any;

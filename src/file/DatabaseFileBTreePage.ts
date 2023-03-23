@@ -28,11 +28,6 @@ export class DatabaseFileBTreePageUtil {
             bytes,
             currentIndex
         );
-        console.log("reading row header size", {
-            currentIndex,
-            headerSize,
-            headerSizeLength,
-        });
         currentIndex += headerSizeLength;
 
         const columnSerialTypes: number[] = [];
@@ -40,9 +35,6 @@ export class DatabaseFileBTreePageUtil {
             const { value: serialType, length: serialTypeLength } =
                 this.readVarInt(bytes, currentIndex);
 
-            console.log(
-                `reading serial type ${serialType} as position ${currentIndex}`
-            );
             currentIndex += serialTypeLength;
 
             columnSerialTypes.push(serialType);
@@ -281,14 +273,7 @@ export class DatabaseFileBTreePageUtil {
             startOffset,
             startOffset + pageHeader.numberCells * 2
         );
-        console.log(
-            "cell offsets",
-            startOffset,
-            pageHeader.numberCells,
-            _.range(0, pageHeader.numberCells).map((idx) =>
-                cellPointerBytes.readUInt16BE(idx * 2)
-            )
-        );
+
         return _.range(0, pageHeader.numberCells).map((idx) =>
             cellPointerBytes.readUInt16BE(idx * 2)
         );
@@ -344,13 +329,14 @@ export class DatabaseFileBTreePageUtil {
                 currentIndex += 4;
             }
 
-            const overflowPageData = overflowPage
-                ? this.readOverflowRecordData(
-                      dbHeader,
-                      overflowPage,
-                      requestAdditionalPage
-                  )
-                : undefined;
+            const { buffer: overflowPageData, otherOverflowPages } =
+                overflowPage
+                    ? this.readOverflowRecordData(
+                          dbHeader,
+                          overflowPage,
+                          requestAdditionalPage
+                      )
+                    : { buffer: undefined, otherOverflowPages: [] };
             const data = overflowPageData
                 ? Buffer.from([...storedData, ...overflowPageData])
                 : storedData;
@@ -362,6 +348,7 @@ export class DatabaseFileBTreePageUtil {
                 pageNumber,
                 overflowPage,
                 records,
+                otherOverflowPages,
                 pageOffset: offset,
                 cells: DatabaseFileBTreePageUtil.zipRecordsAndColumns(
                     records,
@@ -379,6 +366,7 @@ export class DatabaseFileBTreePageUtil {
                     records: [],
                     pageNumber: pageHeader.rightmostPointer,
                     overflowPage: undefined,
+                    otherOverflowPages: [],
                     cells: {},
                     pageOffset: 8,
                 },
@@ -432,13 +420,14 @@ export class DatabaseFileBTreePageUtil {
                 ? bytes.readUInt32BE(currentIndex)
                 : undefined;
 
-            const overflowPageData = overflowPage
-                ? this.readOverflowRecordData(
-                      dbHeader,
-                      overflowPage,
-                      requestAdditionalPage
-                  )
-                : undefined;
+            const { buffer: overflowPageData, otherOverflowPages } =
+                overflowPage
+                    ? this.readOverflowRecordData(
+                          dbHeader,
+                          overflowPage,
+                          requestAdditionalPage
+                      )
+                    : { buffer: undefined, otherOverflowPages: [] };
             const data = overflowPageData
                 ? Buffer.from([...storedData, ...overflowPageData])
                 : storedData;
@@ -449,6 +438,7 @@ export class DatabaseFileBTreePageUtil {
                 storedSize,
                 overflowPage,
                 records,
+                otherOverflowPages,
                 pageOffset: offset,
                 cells: DatabaseFileBTreePageUtil.zipRecordsAndColumns(
                     records,
@@ -456,8 +446,6 @@ export class DatabaseFileBTreePageUtil {
                 ),
             };
         });
-
-        console.log("indices", indices);
 
         return {
             type: "index_leaf",
@@ -470,12 +458,11 @@ export class DatabaseFileBTreePageUtil {
         dbHeader: DatabaseHeader,
         overflowPage: number,
         requestAdditionalPage: RequestAdditionalPageFunction
-    ): Buffer {
-        const maxOverflowSize =
-            dbHeader.pageSizeBytes - dbHeader.unusedReservePageSpace - 4;
-
+    ): { buffer: Buffer; otherOverflowPages: number[] } {
         let currentPageNumber = overflowPage;
+        const otherOverflowPages: number[] = [];
         let fullBuffer: Buffer = Buffer.alloc(0);
+
         // We read the current page until we reach a 0 page, which indicates we have read all of the data.
         while (currentPageNumber > 0) {
             const page = requestAdditionalPage(currentPageNumber);
@@ -486,9 +473,13 @@ export class DatabaseFileBTreePageUtil {
 
             // If the next page number is 0, our loop will end.
             currentPageNumber = nextPageNumber;
+
+            if (nextPageNumber !== 0) {
+                otherOverflowPages.push(nextPageNumber);
+            }
         }
 
-        return fullBuffer;
+        return { buffer: fullBuffer, otherOverflowPages };
     }
 
     static parseBTreeTableLeaf(
@@ -507,10 +498,7 @@ export class DatabaseFileBTreePageUtil {
             let currentIndex = offset;
             const { value: payloadSize, length: payloadSizeLength } =
                 this.readVarInt(bytes, currentIndex);
-            console.log("reading varint payload size", {
-                payloadSize,
-                payloadSizeLength,
-            });
+
             currentIndex += payloadSizeLength;
 
             const { value: rowId, length: rowIdLength } = this.readVarInt(
@@ -538,7 +526,7 @@ export class DatabaseFileBTreePageUtil {
                 currentIndex + storedSize
             );
 
-            currentIndex += storedSize; // - payloadSizeLength - rowIdLength;
+            currentIndex += storedSize;
 
             const hasOverflow = storedSize < payloadSize;
             const overflowPage = hasOverflow
@@ -548,22 +536,18 @@ export class DatabaseFileBTreePageUtil {
                 currentIndex += 4;
             }
 
-            console.log("has overflow? ", overflowPage);
-
-            const overflowPageData = overflowPage
-                ? this.readOverflowRecordData(
-                      dbHeader,
-                      overflowPage,
-                      requestAdditionalPage
-                  )
-                : undefined;
+            const { buffer: overflowPageData, otherOverflowPages } =
+                overflowPage
+                    ? this.readOverflowRecordData(
+                          dbHeader,
+                          overflowPage,
+                          requestAdditionalPage
+                      )
+                    : { buffer: null, otherOverflowPages: [] };
             const data = overflowPageData
                 ? Buffer.from([...storedData, ...overflowPageData])
                 : storedData;
 
-            console.log("parsing records", {
-                currentIndex: offset + rowIdLength + payloadSizeLength,
-            });
             const records = this.parseRecord(data, dbHeader);
             return {
                 payloadSize,
@@ -571,6 +555,7 @@ export class DatabaseFileBTreePageUtil {
                 rowId,
                 overflowPage,
                 records,
+                otherOverflowPages,
                 pageOffset: offset,
                 cells: DatabaseFileBTreePageUtil.zipRecordsAndColumns(
                     records,
