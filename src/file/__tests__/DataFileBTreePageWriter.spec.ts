@@ -51,13 +51,10 @@ describe("DatabaseFileBTreePageWriter", () => {
                 "/Users/joeb3219/Desktop/other_sample.sqlite"
             );
             const database = new DatabaseFile(f);
-            const bytes = database.getBytesOnPage(database.header, 22);
             const page = database.loadPage(23, []);
-            console.log(page);
+
             const writer = new DatabaseFileBTreePageWriter(database, page);
             const result = writer.getBytesBuffer();
-            fs.writeFileSync("/Users/joeb3219/Desktop/pg23_real.bin", bytes);
-            fs.writeFileSync("/Users/joeb3219/Desktop/pg23_mine.bin", result);
 
             const reconverted = DatabaseFileBTreePageUtil.parseBTreePage(
                 result,
@@ -75,13 +72,10 @@ describe("DatabaseFileBTreePageWriter", () => {
                 "/Users/joeb3219/Desktop/other_sample.sqlite"
             );
             const database = new DatabaseFile(f);
-            const bytes = database.getBytesOnPage(database.header, 18);
             const page = database.loadPage(19, []);
-            console.log(page);
+
             const writer = new DatabaseFileBTreePageWriter(database, page);
             const result = writer.getBytesBuffer();
-            fs.writeFileSync("/Users/joeb3219/Desktop/pg19_real.bin", bytes);
-            fs.writeFileSync("/Users/joeb3219/Desktop/pg19_mine.bin", result);
 
             const reconverted = DatabaseFileBTreePageUtil.parseBTreePage(
                 result,
@@ -99,13 +93,10 @@ describe("DatabaseFileBTreePageWriter", () => {
                 "/Users/joeb3219/Desktop/other_sample.sqlite"
             );
             const database = new DatabaseFile(f);
-            const bytes = database.getBytesOnPage(database.header, 25);
             const page = database.loadPage(26, []);
-            console.log("page", page);
+
             const writer = new DatabaseFileBTreePageWriter(database, page);
             const result = writer.getBytesBuffer();
-            fs.writeFileSync("/Users/joeb3219/Desktop/pg26_real.bin", bytes);
-            fs.writeFileSync("/Users/joeb3219/Desktop/pg26_mine.bin", result);
 
             const reconverted = DatabaseFileBTreePageUtil.parseBTreePage(
                 result,
@@ -116,6 +107,27 @@ describe("DatabaseFileBTreePageWriter", () => {
                 []
             );
             expect(reconverted).toEqual(database.loadPage(26, []));
+        });
+
+        it("should return the same data when reading a re-written index leaf page", () => {
+            const f = fs.readFileSync(
+                "/Users/joeb3219/Desktop/other_sample.sqlite"
+            );
+            const database = new DatabaseFile(f);
+            const page = database.loadPage(20, []);
+
+            const writer = new DatabaseFileBTreePageWriter(database, page);
+            const result = writer.getBytesBuffer();
+
+            const reconverted = DatabaseFileBTreePageUtil.parseBTreePage(
+                result,
+                19,
+                database.header,
+                (pageNumber) =>
+                    database.getBytesOnPage(database.header, pageNumber - 1),
+                []
+            );
+            expect(reconverted).toEqual(database.loadPage(20, []));
         });
     });
 });
